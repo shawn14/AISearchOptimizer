@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       platform_results: result.platform_results,
       individual_results: result.individual_results,
       total_cost: result.total_cost,
-      timestamp: result.timestamp,
+      timestamp: typeof result.timestamp === 'string' ? new Date(result.timestamp) : result.timestamp,
       prompt_ids: useCustomPrompts && promptIds ? promptIds : undefined,
       used_custom_prompts: useCustomPrompts || false,
     })

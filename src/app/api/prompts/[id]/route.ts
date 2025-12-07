@@ -3,10 +3,11 @@ import { deletePrompt, updatePrompt } from '@/lib/firebase/storage'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await deletePrompt(params.id)
+    const { id } = await params
+    await deletePrompt(id)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting prompt:', error)
@@ -19,11 +20,12 @@ export async function DELETE(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
-    await updatePrompt(params.id, body)
+    await updatePrompt(id, body)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error updating prompt:', error)

@@ -10,6 +10,7 @@ export interface SessionData {
   email: string
   firstName: string
   lastName: string
+  [key: string]: any
 }
 
 export async function createSession(data: SessionData): Promise<string> {

@@ -4,6 +4,8 @@ import fs from 'fs'
 import path from 'path'
 
 export async function GET(request: NextRequest) {
+  let propertyId: string | null = null
+
   try {
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate') || '7daysAgo'
@@ -13,7 +15,6 @@ export async function GET(request: NextRequest) {
 
     // Read stored connection info
     const connectionsPath = path.join(process.cwd(), 'data', 'ga-connection.json')
-    let propertyId = null
 
     if (fs.existsSync(connectionsPath)) {
       const connectionData = JSON.parse(fs.readFileSync(connectionsPath, 'utf-8'))

@@ -330,10 +330,11 @@ export default function CitationsPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ platform, percent }) => `${platform} ${(percent * 100).toFixed(0)}%`}
+                    label={(props: any) => `${props.platform} ${(props.percent * 100).toFixed(0)}%`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="citations"
+                    nameKey="platform"
                   >
                     {platformChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

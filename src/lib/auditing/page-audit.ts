@@ -133,7 +133,7 @@ export async function auditPageTechnical(html: string, url: string): Promise<Tec
   const links = $('a')
   const internalLinks = links.filter((_, link) => {
     const href = $(link).attr('href')
-    return href && (href.startsWith('/') || href.includes(new URL(url).hostname))
+    return !!(href && (href.startsWith('/') || href.includes(new URL(url).hostname)))
   }).length
   const externalLinks = links.length - internalLinks
 

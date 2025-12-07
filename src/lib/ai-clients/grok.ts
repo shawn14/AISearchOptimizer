@@ -46,7 +46,7 @@ export async function queryGrok(
     const citations: string[] = []
     const urlRegex = /https?:\/\/[^\s<>"\]]+/g
     const urls = text.match(urlRegex) || []
-    citations.push(...new Set(urls))
+    citations.push(...new Set<string>(urls))
 
     // Calculate cost
     const inputTokens = data.usage?.prompt_tokens || 0
