@@ -231,12 +231,15 @@ export default function BrandsPage() {
         method: 'DELETE',
       })
 
-      if (response.ok) {
+      // Treat both 200 (success) and 404 (already deleted) as success
+      if (response.ok || response.status === 404) {
         await fetchBrands()
         setDeleteDialogOpen(false)
         setBrandToDelete(null)
       } else {
-        console.error('Failed to delete brand')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('Failed to delete brand:', errorData)
+        alert(`Failed to delete brand: ${errorData.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error deleting brand:', error)
