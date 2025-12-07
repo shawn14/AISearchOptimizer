@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { SiteHeader } from "@/components/site-header"
 
 export const metadata: Metadata = {
   title: "API Reference - RevIntel",
@@ -49,6 +50,8 @@ const endpoints = [
 export default function APIReferencePage() {
   return (
     <div className="min-h-screen">
+      <SiteHeader />
+
       {/* Header */}
       <section className="border-b">
         <div className="container mx-auto px-4 py-16">

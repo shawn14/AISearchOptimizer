@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Loader2 } from "lucide-react"
+import { SiteHeader } from "@/components/site-header"
 
 const openings = [
   {
@@ -84,6 +84,8 @@ export default function CareersPage() {
 
   return (
     <div className="min-h-screen">
+      <SiteHeader />
+
       {/* Header */}
       <section className="border-b">
         <div className="container mx-auto px-4 py-16">

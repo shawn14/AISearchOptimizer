@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Mail, MessageSquare, Phone } from "lucide-react"
+import { SiteHeader } from "@/components/site-header"
 
 export const metadata: Metadata = {
   title: "Contact - RevIntel",
@@ -13,6 +14,8 @@ export const metadata: Metadata = {
 export default function ContactPage() {
   return (
     <div className="min-h-screen">
+      <SiteHeader />
+
       {/* Header */}
       <section className="border-b">
         <div className="container mx-auto px-4 py-16">

@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { SiteHeader } from "@/components/site-header"
 import {
   Search,
   TrendingUp,
@@ -88,6 +89,8 @@ const features = [
 export default function FeaturesPage() {
   return (
     <div className="min-h-screen">
+      <SiteHeader />
+
       {/* Header */}
       <section className="border-b">
         <div className="container mx-auto px-4 py-16">

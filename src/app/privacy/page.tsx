@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { SiteHeader } from "@/components/site-header"
 
 export const metadata: Metadata = {
   title: "Privacy Policy - RevIntel",

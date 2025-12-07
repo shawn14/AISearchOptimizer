@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Book, Code, Zap, Shield } from "lucide-react"
+import { SiteHeader } from "@/components/site-header"
 
 export const metadata: Metadata = {
   title: "Documentation - RevIntel",
@@ -54,6 +55,8 @@ const sections = [
 export default function DocumentationPage() {
   return (
     <div className="min-h-screen">
+      <SiteHeader />
+
       {/* Header */}
       <section className="border-b">
         <div className="container mx-auto px-4 py-16">

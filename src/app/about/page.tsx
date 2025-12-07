@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { SiteHeader } from "@/components/site-header"
 
 export const metadata: Metadata = {
   title: "About - RevIntel",
@@ -10,6 +11,8 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <div className="min-h-screen">
+      <SiteHeader />
+
       {/* Header */}
       <section className="border-b">
         <div className="container mx-auto px-4 py-16">
