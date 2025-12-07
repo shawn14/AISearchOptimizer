@@ -12,17 +12,21 @@ function initializeFirebase() {
   }
 
   // Initialize with service account credentials
+  const projectId = process.env.FIREBASE_PROJECT_ID?.trim()
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim()
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
+
   const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
     ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
     : {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        projectId,
+        clientEmail,
+        privateKey,
       }
 
   return initializeApp({
     credential: cert(serviceAccount),
-    projectId: process.env.FIREBASE_PROJECT_ID,
+    projectId,
   })
 }
 
