@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Plus, TrendingUp, AlertCircle, Loader2, Sparkles, Star } from "lucide-react"
+import { Plus, TrendingUp, AlertCircle, Loader2, Sparkles, Star, Trash2 } from "lucide-react"
 
 interface CustomPrompt {
   id: string
@@ -45,8 +45,11 @@ export default function BrandsPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [monitorDialogOpen, setMonitorDialogOpen] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [selectedBrandId, setSelectedBrandId] = useState<string>('')
+  const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [monitoring, setMonitoring] = useState<Set<string>>(new Set())
 
   // Form state
@@ -211,6 +214,34 @@ export default function BrandsPage() {
       }
     } catch (error) {
       console.error('Error setting primary brand:', error)
+    }
+  }
+
+  function openDeleteDialog(brand: Brand) {
+    setBrandToDelete(brand)
+    setDeleteDialogOpen(true)
+  }
+
+  async function handleDeleteBrand() {
+    if (!brandToDelete) return
+
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/brands/${brandToDelete.id}`, {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        await fetchBrands()
+        setDeleteDialogOpen(false)
+        setBrandToDelete(null)
+      } else {
+        console.error('Failed to delete brand')
+      }
+    } catch (error) {
+      console.error('Error deleting brand:', error)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -404,6 +435,14 @@ export default function BrandsPage() {
                         ) : (
                           'Run Monitor'
                         )}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => openDeleteDialog(brand)}
+                        title="Delete brand"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -635,6 +674,36 @@ export default function BrandsPage() {
               className="bg-orange-500 hover:bg-orange-600"
             >
               Start Monitoring
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Brand Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Brand</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{brandToDelete?.name}"? This will also delete all associated monitoring data and audits. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteBrand}
+              disabled={deleting}
+            >
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete Brand
             </Button>
           </DialogFooter>
         </DialogContent>
