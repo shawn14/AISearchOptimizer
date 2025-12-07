@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { upsertAudit } from '@/lib/file-storage'
+import { savePageAudit } from '@/lib/firebase/storage'
 import { auditPage } from '@/lib/auditing/page-audit'
 
 export async function POST(request: NextRequest) {
@@ -22,16 +22,19 @@ export async function POST(request: NextRequest) {
       aeo: auditResult.aeo.score,
     })
 
-    // Save to storage
-    const savedAudit = await upsertAudit({
-      brand_id: brandId || 'default-brand',
+    // Save to Firebase
+    const savedAudit = await savePageAudit({
       page_url: url,
       page_title: auditResult.title,
-      is_homepage: false, // TODO: detect if homepage
       technical_score: auditResult.technical.score,
       content_score: auditResult.content.score,
       aeo_score: auditResult.aeo.score,
-      last_audited_at: new Date().toISOString(),
+      issues: [
+        ...auditResult.technical.issues,
+        ...auditResult.content.issues,
+        ...auditResult.aeo.issues,
+      ],
+      last_audited_at: new Date(),
     })
 
     return NextResponse.json({ success: true, audit: auditResult, saved: savedAudit })

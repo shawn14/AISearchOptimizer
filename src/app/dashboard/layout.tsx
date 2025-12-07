@@ -6,16 +6,16 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950">
+    <div className="min-h-screen bg-background">
       <div className="flex">
         {/* Sidebar */}
-        <aside className="hidden lg:block w-64 border-r bg-card min-h-screen p-4">
+        <aside className="hidden lg:block w-64 border-r border-border bg-card min-h-screen fixed left-0 top-0 bottom-0">
           <DashboardNav />
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1">
-          <div className="container mx-auto p-6 lg:p-8">
+        <main className="flex-1 lg:ml-64">
+          <div className="px-8 py-8 max-w-[1400px] mx-auto">
             {children}
           </div>
         </main>

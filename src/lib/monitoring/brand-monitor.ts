@@ -1,8 +1,9 @@
-import OpenAI from 'openai'
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+import { queryOpenAI } from '../ai-clients/openai'
+import { queryClaude } from '../ai-clients/anthropic'
+import { queryGemini } from '../ai-clients/gemini'
+import { queryPerplexity } from '../ai-clients/perplexity'
+import { queryGrok } from '../ai-clients/grok'
+import { AIClientResponse, AIPlatform } from '@/types'
 
 export interface BrandMentionResult {
   platform: string
@@ -31,6 +32,9 @@ export interface MonitoringResult {
   total_cost: number
   timestamp: string
 }
+
+// Platform configuration - enable/disable platforms
+const ENABLED_PLATFORMS: AIPlatform[] = ['chatgpt', 'claude', 'perplexity', 'grok']
 
 // Generate industry-specific queries for a brand
 function generateQueriesForBrand(brandName: string, industry?: string | null): string[] {
@@ -130,63 +134,110 @@ function analyzeBrandMention(brandName: string, responseText: string): {
   }
 }
 
-// Query OpenAI and analyze brand mention
-async function queryOpenAI(query: string, brandName: string): Promise<BrandMentionResult> {
-  const startTime = Date.now()
+// Query a specific platform
+async function queryPlatform(
+  platform: AIPlatform,
+  query: string,
+  brandName: string
+): Promise<BrandMentionResult> {
+  let response: AIClientResponse
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', // Using mini for cost efficiency
-      messages: [
-        {
-          role: 'user',
-          content: query,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 500,
-    })
-
-    const responseText = completion.choices[0]?.message?.content || ''
-    const usage = completion.usage
-
-    // Calculate cost (gpt-4o-mini pricing: $0.150/1M input, $0.600/1M output)
-    const inputCost = (usage?.prompt_tokens || 0) * 0.150 / 1_000_000
-    const outputCost = (usage?.completion_tokens || 0) * 0.600 / 1_000_000
-    const cost = inputCost + outputCost
+    switch (platform) {
+      case 'chatgpt':
+        response = await queryOpenAI(query, 'gpt-4o-mini')
+        break
+      case 'claude':
+        response = await queryClaude(query, 'claude-3-haiku-20240307')
+        break
+      case 'gemini':
+        response = await queryGemini(query, 'gemini-1.5-flash')
+        break
+      case 'perplexity':
+        response = await queryPerplexity(query, 'llama-3.1-sonar-small-128k-online')
+        break
+      case 'grok':
+        response = await queryGrok(query, 'grok-beta')
+        break
+      default:
+        throw new Error(`Unknown platform: ${platform}`)
+    }
 
     // Analyze brand mention
-    const analysis = analyzeBrandMention(brandName, responseText)
+    const analysis = analyzeBrandMention(brandName, response.text)
 
     return {
-      platform: 'ChatGPT',
+      platform: platform.charAt(0).toUpperCase() + platform.slice(1), // Capitalize platform name
       query,
-      response_text: responseText,
-      cost,
+      response_text: response.text,
+      cost: response.metadata.cost,
       ...analysis,
     }
   } catch (error) {
-    console.error('OpenAI query error:', error)
-    throw error
+    console.error(`Error querying ${platform}:`, error)
+    // Return empty result on error
+    return {
+      platform: platform.charAt(0).toUpperCase() + platform.slice(1),
+      query,
+      response_text: '',
+      cost: 0,
+      mentioned: false,
+      prominence_score: 0,
+      sentiment: 'neutral',
+      context: '',
+    }
   }
 }
 
-// Monitor a brand across multiple queries
-export async function monitorBrand(
+// Monitor a brand with custom queries
+export async function monitorBrandWithCustomQueries(
   brandName: string,
-  industry?: string | null,
-  numQueries: number = 5
+  customQueries: string[],
+  platforms: AIPlatform[] = ENABLED_PLATFORMS
 ): Promise<MonitoringResult> {
-  const queries = generateQueriesForBrand(brandName, industry).slice(0, numQueries)
+  const queries = customQueries
 
-  console.log(`Monitoring brand "${brandName}" with ${queries.length} queries...`)
+  console.log(`Monitoring brand "${brandName}" across ${platforms.length} platforms with ${queries.length} custom queries...`)
 
-  // Query all in parallel
-  const results = await Promise.all(
-    queries.map(query => queryOpenAI(query, brandName))
-  )
+  // Create all query tasks (queries x platforms)
+  const tasks: Promise<BrandMentionResult>[] = []
 
-  // Calculate aggregate metrics
+  for (const query of queries) {
+    for (const platform of platforms) {
+      tasks.push(queryPlatform(platform, query, brandName))
+    }
+  }
+
+  // Execute all queries in parallel across all platforms
+  const results = await Promise.all(tasks)
+
+  // Calculate aggregate metrics per platform
+  const platformResults = platforms.map(platform => {
+    const platformName = platform.charAt(0).toUpperCase() + platform.slice(1)
+    const platformMentions = results.filter(r => r.platform === platformName && r.mentioned)
+    const platformTotal = results.filter(r => r.platform === platformName)
+
+    const avgProminence = platformMentions.length > 0
+      ? platformMentions.reduce((sum, r) => sum + r.prominence_score, 0) / platformMentions.length
+      : 0
+
+    const avgSentimentScore = platformMentions.length > 0
+      ? platformMentions.reduce((sum, r) => {
+          if (r.sentiment === 'positive') return sum + 1
+          if (r.sentiment === 'negative') return sum - 1
+          return sum
+        }, 0) / platformMentions.length
+      : 0
+
+    return {
+      platform: platformName,
+      mentions: platformMentions.length,
+      avg_prominence: Math.round(avgProminence),
+      avg_sentiment_score: avgSentimentScore,
+    }
+  })
+
+  // Calculate overall metrics
   const totalMentions = results.filter(r => r.mentioned).length
   const mentionedResults = results.filter(r => r.mentioned)
 
@@ -195,22 +246,85 @@ export async function monitorBrand(
     : 0
 
   // Visibility score: combination of mention rate and prominence
-  const mentionRate = (totalMentions / queries.length) * 100
+  const totalPossibleMentions = queries.length * platforms.length
+  const mentionRate = (totalMentions / totalPossibleMentions) * 100
   const visibilityScore = Math.round((mentionRate * 0.5) + (avgProminence * 0.5))
 
-  // Platform results
-  const platformResults = [{
-    platform: 'ChatGPT',
-    mentions: totalMentions,
-    avg_prominence: Math.round(avgProminence),
-    avg_sentiment_score: mentionedResults.length > 0
-      ? mentionedResults.reduce((sum, r) => {
+  const totalCost = results.reduce((sum, r) => sum + r.cost, 0)
+
+  return {
+    brand_name: brandName,
+    total_mentions: totalMentions,
+    visibility_score: visibilityScore,
+    queries_tested: queries.length,
+    platform_results: platformResults,
+    individual_results: results,
+    total_cost: totalCost,
+    timestamp: new Date().toISOString(),
+  }
+}
+
+// Monitor a brand across multiple platforms and queries
+export async function monitorBrand(
+  brandName: string,
+  industry?: string | null,
+  numQueries: number = 5,
+  platforms: AIPlatform[] = ENABLED_PLATFORMS
+): Promise<MonitoringResult> {
+  const queries = generateQueriesForBrand(brandName, industry).slice(0, numQueries)
+
+  console.log(`Monitoring brand "${brandName}" across ${platforms.length} platforms with ${queries.length} queries...`)
+
+  // Create all query tasks (queries x platforms)
+  const tasks: Promise<BrandMentionResult>[] = []
+
+  for (const query of queries) {
+    for (const platform of platforms) {
+      tasks.push(queryPlatform(platform, query, brandName))
+    }
+  }
+
+  // Execute all queries in parallel across all platforms
+  const results = await Promise.all(tasks)
+
+  // Calculate aggregate metrics per platform
+  const platformResults = platforms.map(platform => {
+    const platformName = platform.charAt(0).toUpperCase() + platform.slice(1)
+    const platformMentions = results.filter(r => r.platform === platformName && r.mentioned)
+    const platformTotal = results.filter(r => r.platform === platformName)
+
+    const avgProminence = platformMentions.length > 0
+      ? platformMentions.reduce((sum, r) => sum + r.prominence_score, 0) / platformMentions.length
+      : 0
+
+    const avgSentimentScore = platformMentions.length > 0
+      ? platformMentions.reduce((sum, r) => {
           if (r.sentiment === 'positive') return sum + 1
           if (r.sentiment === 'negative') return sum - 1
           return sum
-        }, 0) / mentionedResults.length
-      : 0,
-  }]
+        }, 0) / platformMentions.length
+      : 0
+
+    return {
+      platform: platformName,
+      mentions: platformMentions.length,
+      avg_prominence: Math.round(avgProminence),
+      avg_sentiment_score: avgSentimentScore,
+    }
+  })
+
+  // Calculate overall metrics
+  const totalMentions = results.filter(r => r.mentioned).length
+  const mentionedResults = results.filter(r => r.mentioned)
+
+  const avgProminence = mentionedResults.length > 0
+    ? mentionedResults.reduce((sum, r) => sum + r.prominence_score, 0) / mentionedResults.length
+    : 0
+
+  // Visibility score: combination of mention rate and prominence
+  const totalPossibleMentions = queries.length * platforms.length
+  const mentionRate = (totalMentions / totalPossibleMentions) * 100
+  const visibilityScore = Math.round((mentionRate * 0.5) + (avgProminence * 0.5))
 
   const totalCost = results.reduce((sum, r) => sum + r.cost, 0)
 

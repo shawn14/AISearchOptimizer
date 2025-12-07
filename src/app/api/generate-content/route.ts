@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
+import { checkRateLimit, recordRequest, completeRequest, getUsageStats } from '@/lib/rate-limiting'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
 export async function POST(request: NextRequest) {
+  // Get user ID (in production, get from auth)
+  const userId = request.headers.get('x-user-id') || 'anonymous'
+
   try {
     const body = await request.json()
     const { topic, contentType } = body
@@ -13,6 +17,28 @@ export async function POST(request: NextRequest) {
     if (!topic) {
       return NextResponse.json({ error: 'Topic is required' }, { status: 400 })
     }
+
+    // Check rate limits
+    const rateLimitCheck = checkRateLimit(userId, 'generate-content')
+    if (!rateLimitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          message: rateLimitCheck.reason,
+          retryAfter: rateLimitCheck.retryAfter,
+          usage: getUsageStats(userId),
+        },
+        {
+          status: 429,
+          headers: rateLimitCheck.retryAfter
+            ? { 'Retry-After': rateLimitCheck.retryAfter.toString() }
+            : {}
+        }
+      )
+    }
+
+    // Record request start
+    recordRequest(userId, 'generate-content')
 
     console.log(`Generating ${contentType} about: ${topic}`)
 
@@ -51,18 +77,30 @@ Make it around 1200-1500 words and highly valuable for readers.`
     })
 
     const content = completion.choices[0].message.content
+    const cost = (completion.usage?.total_tokens || 0) * 0.000002 // Rough cost estimate
 
     console.log('Content generated successfully')
+
+    // Record the cost for rate limiting
+    recordRequest(userId, 'generate-content', cost)
+
+    // Mark request as complete
+    completeRequest(userId)
+
+    // Include usage stats in response
+    const usageStats = getUsageStats(userId)
 
     return NextResponse.json({
       success: true,
       content,
       wordCount: content?.split(' ').length || 0,
-      cost: (completion.usage?.total_tokens || 0) * 0.000002 // Rough cost estimate
+      cost,
+      usage: usageStats
     })
 
   } catch (error) {
     console.error('Content generation error:', error)
+    completeRequest(userId)
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Content generation failed',

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getBrands, createBrand } from '@/lib/file-storage'
+import { getAllBrands, createBrand } from '@/lib/firebase/storage'
 
 export async function GET() {
   try {
-    const brands = await getBrands()
+    const brands = await getAllBrands()
     return NextResponse.json({ brands })
   } catch (error) {
     console.error('Error fetching brands:', error)

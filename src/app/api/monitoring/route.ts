@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getMonitoringRuns } from '@/lib/file-storage'
+import { getMonitoringRuns } from '@/lib/firebase/storage'
 
 export async function GET(request: NextRequest) {
   try {

@@ -48,6 +48,7 @@ export default function AgentPage() {
   // Real data
   const [monitoringRuns, setMonitoringRuns] = useState<MonitoringRun[]>([])
   const [audits, setAudits] = useState<PageAudit[]>([])
+  const [gaData, setGaData] = useState<any>(null)
 
   // Content generation
   const [contentType, setContentType] = useState("article")
@@ -58,7 +59,6 @@ export default function AgentPage() {
   // Google Analytics
   const [gaConnected, setGaConnected] = useState(false)
   const [gaPropertyId, setGaPropertyId] = useState("")
-  const [gaData, setGaData] = useState<any>(null)
   const [showGaDialog, setShowGaDialog] = useState(false)
   const [gaCredentialsFile, setGaCredentialsFile] = useState<File | null>(null)
 
@@ -163,7 +163,86 @@ What would you like to explore? I can help you improve your visibility, optimize
       let responseContent = "I'm analyzing your data..."
       const query = input.toLowerCase()
 
-      if (query.includes('visibility') || query.includes('mention')) {
+      // Priority 1: If GA is connected and asking about "top pages" without AEO-specific keywords, show traffic
+      if (gaConnected && gaData &&
+          query.includes('top') &&
+          (query.includes('page') || query.includes('url')) &&
+          !query.includes('aeo') &&
+          !query.includes('score') &&
+          !query.includes('audit')) {
+        // Show GA traffic data
+        if (!gaData.topPages || gaData.topPages.length === 0) {
+          responseContent = "No traffic data available yet. Make sure your Google Analytics is properly configured and has data."
+        } else {
+          const topPages = gaData.topPages.slice(0, 10)
+          responseContent = `Here are your top ${topPages.length} most visited pages:\n\n`
+
+          topPages.forEach((page: any, i: number) => {
+            responseContent += `${i + 1}. **${page.page || 'Home'}**\n`
+            responseContent += `   - Page Views: ${page.pageViews.toLocaleString()}\n`
+            responseContent += `   - Users: ${page.users.toLocaleString()}\n`
+            if (page.url && page.url !== '/') {
+              responseContent += `   - URL: ${page.url}\n`
+            }
+            responseContent += `\n`
+          })
+
+          const totalViews = topPages.reduce((sum: number, p: any) => sum + p.pageViews, 0)
+          const totalUsers = topPages.reduce((sum: number, p: any) => sum + p.users, 0)
+          responseContent += `\nTotal: **${totalViews.toLocaleString()}** page views from **${totalUsers.toLocaleString()}** users across these top pages.`
+        }
+      }
+      // Priority 2: Explicit traffic keywords
+      else if ((query.includes('traffic') || query.includes('visit') || query.includes('analytics') || query.includes('user')) &&
+          (query.includes('top') || query.includes('most'))) {
+        // Handle Google Analytics queries
+        if (!gaConnected || !gaData) {
+          responseContent = "Google Analytics is not connected yet. Connect it in the Analytics tab to see traffic data for your top pages."
+        } else if (!gaData.topPages || gaData.topPages.length === 0) {
+          responseContent = "No traffic data available yet. Make sure your Google Analytics is properly configured and has data."
+        } else {
+          const topPages = gaData.topPages.slice(0, 10)
+          responseContent = `Here are your top ${topPages.length} most visited pages:\n\n`
+
+          topPages.forEach((page: any, i: number) => {
+            responseContent += `${i + 1}. **${page.page || 'Home'}**\n`
+            responseContent += `   - Page Views: ${page.pageViews.toLocaleString()}\n`
+            responseContent += `   - Users: ${page.users.toLocaleString()}\n`
+            if (page.url && page.url !== '/') {
+              responseContent += `   - URL: ${page.url}\n`
+            }
+            responseContent += `\n`
+          })
+
+          const totalViews = topPages.reduce((sum: number, p: any) => sum + p.pageViews, 0)
+          const totalUsers = topPages.reduce((sum: number, p: any) => sum + p.users, 0)
+          responseContent += `\nTotal: **${totalViews.toLocaleString()}** page views from **${totalUsers.toLocaleString()}** users across these top pages.`
+        }
+      }
+      // Priority 3: AEO/audit specific queries
+      else if (query.includes('top') && (query.includes('page') || query.includes('url')) &&
+               (query.includes('aeo') || query.includes('score') || query.includes('audit'))) {
+        // Handle "top pages by AEO" queries
+        if (audits.length === 0) {
+          responseContent = "You haven't audited any pages yet. Visit the Audit tab to analyze your pages for AEO optimization."
+        } else {
+          const topPages = audits
+            .sort((a, b) => (b.aeo_score || 0) - (a.aeo_score || 0))
+            .slice(0, 10)
+
+          responseContent = `Here are your top ${topPages.length} pages by AEO score:\n\n`
+
+          topPages.forEach((page, i) => {
+            const title = page.page_title || new URL(page.page_url).hostname
+            responseContent += `${i + 1}. **${title}**\n`
+            responseContent += `   - AEO: ${page.aeo_score || 0}/100, Technical: ${page.technical_score || 0}/100, Content: ${page.content_score || 0}/100\n`
+            responseContent += `   - URL: ${page.page_url}\n\n`
+          })
+
+          const avgAEO = Math.round(topPages.reduce((sum, p) => sum + (p.aeo_score || 0), 0) / topPages.length)
+          responseContent += `\nAverage AEO score across these pages: **${avgAEO}/100**`
+        }
+      } else if (query.includes('visibility') || query.includes('mention')) {
         const avgVis = monitoringRuns.length > 0
           ? Math.round(monitoringRuns.reduce((sum, r) => sum + r.visibility_score, 0) / monitoringRuns.length)
           : 0
@@ -179,9 +258,14 @@ What would you like to explore? I can help you improve your visibility, optimize
         const avgTech = audits.length > 0
           ? Math.round(audits.reduce((sum, p) => sum + (p.technical_score || 0), 0) / audits.length)
           : 0
-        responseContent = `I've analyzed ${audits.length} pages:
+        const avgContent = audits.length > 0
+          ? Math.round(audits.reduce((sum, p) => sum + (p.content_score || 0), 0) / audits.length)
+          : 0
+
+        responseContent = `I've analyzed ${audits.length} ${audits.length === 1 ? 'page' : 'pages'}:
 
 **Technical SEO**: ${avgTech}/100
+**Content Quality**: ${avgContent}/100
 **AEO Score**: ${avgAEO}/100
 
 ${avgAEO < 80 ? 'To improve AEO, I recommend:\n1. Add FAQ schema to key pages\n2. Include more structured Q&A content\n3. Add citations and references\n4. Use semantic HTML5 elements' : 'Your AEO is strong! Focus on creating more optimized content to expand coverage.'}`
@@ -195,7 +279,7 @@ ${avgAEO < 80 ? 'To improve AEO, I recommend:\n1. Add FAQ schema to key pages\n2
 
 Would you like me to help with any of these specifically?`
       } else {
-        responseContent = "I can help you with:\n- Analyzing your brand visibility across AI platforms\n- Auditing pages for AEO optimization\n- Generating content optimized for AI search\n- Tracking your performance over time\n\nWhat would you like to focus on?"
+        responseContent = "I can help you with:\n- Analyzing your brand visibility across AI platforms\n- Auditing pages for AEO optimization\n- Showing your top performing pages\n- Tracking your performance over time\n\nWhat would you like to focus on?"
       }
 
       const assistantMessage: Message = {
@@ -373,10 +457,10 @@ Would you like me to help with any of these specifically?`
                 <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
                   {messages.map((message, i) => (
                     <div key={i} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[80%] ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'} rounded-lg p-4`}>
+                      <div className={`max-w-[80%] ${message.role === 'user' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted/50'} rounded-xl p-4`}>
                         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                         {message.analysis && message.analysis.steps && message.analysis.steps.length > 0 && (
-                          <div className="mt-3 pt-3 border-t border-border/40 space-y-1">
+                          <div className="mt-3 pt-3 space-y-1">
                             {message.analysis.steps.map((step, idx) => (
                               <div key={idx} className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <div className="w-1 h-1 rounded-full bg-green-500" />
@@ -390,7 +474,7 @@ Would you like me to help with any of these specifically?`
                   ))}
                   {isAnalyzing && (
                     <div className="flex justify-start">
-                      <div className="bg-muted rounded-lg p-4">
+                      <div className="bg-muted/50 rounded-xl p-4">
                         <div className="flex items-center gap-2">
                           <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
                           <span className="text-sm text-muted-foreground">Analyzing your data...</span>
@@ -462,17 +546,17 @@ Would you like me to help with any of these specifically?`
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {/* Visibility Trend */}
-                    <div className="border rounded-lg p-3">
+                    <div className="bg-muted/30 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-sm font-medium">Visibility Trend</span>
                         <TrendingDown className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="space-y-2">
-                        <div className="h-24 bg-muted rounded flex items-end justify-between px-2 pb-2 gap-1">
+                        <div className="h-24 bg-muted/50 rounded-lg flex items-end justify-between px-2 pb-2 gap-1">
                           {recentRuns.slice(0, 7).reverse().map((run, i) => (
                             <div
                               key={i}
-                              className="w-full bg-blue-500 rounded-t"
+                              className="w-full bg-primary rounded-t"
                               style={{height: `${run.visibility_score}%`}}
                             />
                           ))}
@@ -484,7 +568,7 @@ Would you like me to help with any of these specifically?`
                     </div>
 
                     {/* Recent Monitoring Runs */}
-                    <div className="border rounded-lg p-3">
+                    <div className="bg-muted/30 rounded-lg p-3">
                       <div className="text-sm font-medium mb-2">Recent Runs</div>
                       <div className="space-y-2">
                         {recentRuns.slice(0, 3).map((run) => (
@@ -516,7 +600,7 @@ Would you like me to help with any of these specifically?`
                     </p>
                   </CardHeader>
                   <CardContent>
-                    <div className="border rounded-lg p-3">
+                    <div className="bg-muted/30 rounded-lg p-3">
                       <div className="space-y-2">
                         <div className="grid grid-cols-[1fr_60px_60px_60px] gap-2 text-xs">
                           <div className="font-medium text-muted-foreground">PAGE</div>
@@ -826,93 +910,8 @@ Would you like me to help with any of these specifically?`
         </TabsContent>
 
         {/* Audit Tab */}
-        <TabsContent value="audit" className="flex-1 p-0 mt-0">
-          <div className="h-full flex">
-            {/* Sidebar Navigation */}
-            <div className="w-64 border-r bg-card p-4 overflow-y-auto">
-              <div className="space-y-1">
-                {/* Brand Selector */}
-                <div className="mb-4">
-                  <select className="w-full px-3 py-2 border rounded-lg text-sm">
-                    <option>Lottie</option>
-                    <option>StockAlarm</option>
-                  </select>
-                </div>
-
-                {/* Navigation Items */}
-                <div className="space-y-1">
-                  <div className="px-3 py-2 hover:bg-muted rounded-lg cursor-pointer flex items-center gap-2">
-                    <Bot className="h-4 w-4" />
-                    <span className="text-sm">Agent</span>
-                  </div>
-                  <div className="px-3 py-2 hover:bg-muted rounded-lg cursor-pointer flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    <span className="text-sm">Knowledge Base</span>
-                  </div>
-
-                  {/* Analytics Section */}
-                  <div className="pt-2">
-                    <div className="px-3 py-2 hover:bg-muted rounded-lg cursor-pointer flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4" />
-                      <span className="text-sm font-medium">Analytics</span>
-                    </div>
-                    <div className="ml-4 space-y-1 mt-1">
-                      <div className="px-3 py-1.5 hover:bg-muted rounded-lg cursor-pointer flex items-center gap-2">
-                        <div className="h-3 w-3 rounded-full border-2 border-current" />
-                        <span className="text-sm">Visibility</span>
-                      </div>
-                      <div className="px-3 py-1.5 hover:bg-muted rounded-lg cursor-pointer flex items-center gap-2">
-                        <Target className="h-3 w-3" />
-                        <span className="text-sm">Mentions</span>
-                      </div>
-                      <div className="px-3 py-1.5 hover:bg-muted rounded-lg cursor-pointer flex items-center gap-2">
-                        <TrendingDown className="h-3 w-3" />
-                        <span className="text-sm">Traffic</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Prompts Section */}
-                  <div className="pt-2">
-                    <div className="px-3 py-2 hover:bg-muted rounded-lg cursor-pointer flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      <span className="text-sm font-medium">Prompts</span>
-                    </div>
-                    <div className="ml-4 space-y-1 mt-1">
-                      <div className="px-3 py-1.5 hover:bg-muted rounded-lg cursor-pointer text-sm">Your Prompts</div>
-                      <div className="px-3 py-1.5 hover:bg-muted rounded-lg cursor-pointer text-sm">Prompt Research</div>
-                    </div>
-                  </div>
-
-                  {/* Content Section */}
-                  <div className="pt-2">
-                    <div className="px-3 py-2 hover:bg-muted rounded-lg cursor-pointer flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      <span className="text-sm font-medium">Content</span>
-                    </div>
-                    <div className="ml-4 space-y-1 mt-1">
-                      <div className="px-3 py-1.5 hover:bg-muted rounded-lg cursor-pointer text-sm">Articles</div>
-                      <div className="px-3 py-1.5 hover:bg-muted rounded-lg cursor-pointer text-sm">Schedule</div>
-                    </div>
-                  </div>
-
-                  {/* On-Page Section */}
-                  <div className="pt-2">
-                    <div className="px-3 py-2 hover:bg-muted rounded-lg cursor-pointer flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      <span className="text-sm font-medium">On-Page</span>
-                    </div>
-                    <div className="ml-4 space-y-1 mt-1">
-                      <div className="px-3 py-1.5 hover:bg-muted rounded-lg cursor-pointer text-sm">Site Health</div>
-                      <div className="px-3 py-1.5 hover:bg-muted rounded-lg cursor-pointer text-sm">Issues</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto p-6">
+        <TabsContent value="audit" className="flex-1 p-6 mt-0 overflow-y-auto">
+            <div className="space-y-6 max-w-6xl mx-auto">
               <div className="space-y-6 max-w-6xl">
                 {/* Header with Search */}
                 <div className="flex items-center gap-4">
@@ -1112,7 +1111,6 @@ Would you like me to help with any of these specifically?`
                 </Card>
               </div>
             </div>
-          </div>
         </TabsContent>
       </Tabs>
     </div>

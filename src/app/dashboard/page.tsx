@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, Activity, Target, Loader2, Sparkles } from "lucide-react"
+import { TrendingUp, Activity, Target, Loader2, Sparkles, Users, MousePointer } from "lucide-react"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 interface MonitoringRun {
   id: string
@@ -33,10 +34,49 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [monitoringRuns, setMonitoringRuns] = useState<MonitoringRun[]>([])
   const [audits, setAudits] = useState<PageAudit[]>([])
+  const [gaData, setGaData] = useState<any>(null)
+  const [gaConnected, setGaConnected] = useState(false)
 
   useEffect(() => {
     fetchData()
+    checkGAConnection()
   }, [])
+
+  async function checkGAConnection() {
+    try {
+      const response = await fetch('/api/analytics/connect')
+      const data = await response.json()
+
+      if (data.connected) {
+        setGaConnected(true)
+        await fetchGoogleAnalyticsData()
+      }
+    } catch (error) {
+      console.error('Failed to check GA connection:', error)
+    }
+  }
+
+  async function fetchGoogleAnalyticsData() {
+    try {
+      const response = await fetch('/api/analytics/data?startDate=30daysAgo&endDate=today')
+
+      if (!response.ok) {
+        console.error('GA API returned error status:', response.status)
+        return
+      }
+
+      const text = await response.text()
+      if (!text) {
+        console.error('GA API returned empty response')
+        return
+      }
+
+      const result = JSON.parse(text)
+      setGaData(result.data)
+    } catch (error) {
+      console.error('Failed to fetch GA data:', error)
+    }
+  }
 
   async function fetchData() {
     try {
@@ -176,36 +216,115 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Pages Audited
-            </CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{audits.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {audits.filter(a => a.last_audited_at).length} with scores
-            </p>
-          </CardContent>
-        </Card>
+        {gaConnected && gaData ? (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Users
+                </CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{gaData.metrics?.totalUsers?.toLocaleString() || 0}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Last 30 days
+                </p>
+              </CardContent>
+            </Card>
 
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Page Views
+                </CardTitle>
+                <MousePointer className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{gaData.metrics?.totalPageViews?.toLocaleString() || 0}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Total page views
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Pages Audited
+                </CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{audits.length}</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {audits.filter(a => a.last_audited_at).length} with scores
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Avg AEO Score
+                </CardTitle>
+                <Target className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{avgAEO}/100</div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  AI Engine Optimization
+                </p>
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </div>
+
+      {/* Google Analytics Traffic Chart */}
+      {gaConnected && gaData && gaData.dailyData && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Avg AEO Score
-            </CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
+          <CardHeader>
+            <CardTitle>Website Traffic (Last 30 Days)</CardTitle>
+            <CardDescription>Daily visitors from Google Analytics</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{avgAEO}/100</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              AI Engine Optimization
-            </p>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={gaData.dailyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="date"
+                  fontSize={12}
+                  tickFormatter={(value) => {
+                    const date = new Date(value)
+                    return `${date.getMonth() + 1}/${date.getDate()}`
+                  }}
+                />
+                <YAxis fontSize={12} />
+                <Tooltip
+                  labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="users"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                  name="Users"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="pageViews"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  name="Page Views"
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
-      </div>
+      )}
 
       {/* Page Audit Scores */}
       {audits.length > 0 && (

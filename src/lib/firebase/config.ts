@@ -1,0 +1,43 @@
+import { initializeApp, getApps, cert } from 'firebase-admin/app'
+import { getFirestore } from 'firebase-admin/firestore'
+
+/**
+ * Initialize Firebase Admin SDK
+ * Using singleton pattern to avoid multiple initializations
+ */
+function initializeFirebase() {
+  // Check if already initialized
+  if (getApps().length > 0) {
+    return getApps()[0]
+  }
+
+  // Initialize with service account credentials
+  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT
+    ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+    : {
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }
+
+  return initializeApp({
+    credential: cert(serviceAccount),
+    projectId: process.env.FIREBASE_PROJECT_ID,
+  })
+}
+
+// Initialize Firebase
+const app = initializeFirebase()
+
+// Export Firestore instance
+export const db = getFirestore(app)
+
+// Collection names
+export const COLLECTIONS = {
+  BRANDS: 'brands',
+  PROMPTS: 'prompts',
+  MONITORING_RUNS: 'monitoring_runs',
+  AUDITS: 'audits',
+  USERS: 'users',
+  COMPETITORS: 'competitors',
+} as const

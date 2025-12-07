@@ -8,7 +8,17 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Plus, TrendingUp, AlertCircle, Loader2 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Plus, TrendingUp, AlertCircle, Loader2, Sparkles } from "lucide-react"
+
+interface CustomPrompt {
+  id: string
+  name: string
+  prompt_text: string
+  category?: string
+  variables: Record<string, string>
+}
 
 interface Brand {
   id: string
@@ -30,8 +40,11 @@ export default function BrandsPage() {
   const router = useRouter()
   const [brands, setBrands] = useState<Brand[]>([])
   const [brandStats, setBrandStats] = useState<Record<string, BrandStats>>({})
+  const [customPrompts, setCustomPrompts] = useState<CustomPrompt[]>([])
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [monitorDialogOpen, setMonitorDialogOpen] = useState(false)
+  const [selectedBrandId, setSelectedBrandId] = useState<string>('')
   const [saving, setSaving] = useState(false)
   const [monitoring, setMonitoring] = useState<Set<string>>(new Set())
 
@@ -43,8 +56,15 @@ export default function BrandsPage() {
     description: ''
   })
 
+  // Monitor form state
+  const [monitorFormData, setMonitorFormData] = useState({
+    useCustomPrompts: false,
+    selectedPromptIds: [] as string[],
+  })
+
   useEffect(() => {
     fetchBrands()
+    fetchCustomPrompts()
   }, [])
 
   async function fetchBrands() {
@@ -78,18 +98,31 @@ export default function BrandsPage() {
     }
   }
 
+  async function fetchCustomPrompts() {
+    try {
+      const response = await fetch('/api/prompts')
+      const data = await response.json()
+      setCustomPrompts(data.prompts || [])
+    } catch (error) {
+      console.error('Failed to fetch custom prompts:', error)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
 
     try {
+      console.log('Submitting brand:', formData)
       const response = await fetch('/api/brands', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       })
 
+      console.log('Response status:', response.status)
       const data = await response.json()
+      console.log('Response data:', data)
 
       if (response.ok) {
         // Refresh brands list
@@ -99,45 +132,67 @@ export default function BrandsPage() {
         // Close dialog
         setDialogOpen(false)
       } else {
-        alert(`Error: ${data.error}`)
+        console.error('Create brand error:', data.error || 'Unknown error')
       }
     } catch (error) {
       console.error('Failed to create brand:', error)
-      alert('Failed to create brand. Please try again.')
     } finally {
       setSaving(false)
     }
   }
 
-  async function runMonitoring(brandId: string) {
-    setMonitoring(prev => new Set(prev).add(brandId))
+  function openMonitorDialog(brandId: string) {
+    setSelectedBrandId(brandId)
+    setMonitorFormData({
+      useCustomPrompts: false,
+      selectedPromptIds: [],
+    })
+    setMonitorDialogOpen(true)
+  }
+
+  async function runMonitoring() {
+    if (!selectedBrandId) return
+
+    setMonitoring(prev => new Set(prev).add(selectedBrandId))
+    setMonitorDialogOpen(false)
 
     try {
       const response = await fetch('/api/monitor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brandId }),
+        body: JSON.stringify({
+          brandId: selectedBrandId,
+          useCustomPrompts: monitorFormData.useCustomPrompts,
+          promptIds: monitorFormData.useCustomPrompts ? monitorFormData.selectedPromptIds : undefined,
+        }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        alert(`Monitoring complete!\n\nVisibility Score: ${data.result.visibility_score}\nMentions: ${data.result.total_mentions}/${data.result.queries_tested}\nCost: $${data.result.total_cost.toFixed(4)}`)
-        // Refresh brands to show updated data
+        // Just refresh brands to show updated data - results will be visible in the card
         await fetchBrands()
       } else {
-        alert(`Error: ${data.error}`)
+        console.error('Monitoring error:', data.error)
       }
     } catch (error) {
       console.error('Failed to run monitoring:', error)
-      alert('Failed to run monitoring. Please try again.')
     } finally {
       setMonitoring(prev => {
         const next = new Set(prev)
-        next.delete(brandId)
+        next.delete(selectedBrandId)
         return next
       })
     }
+  }
+
+  function togglePromptSelection(promptId: string) {
+    setMonitorFormData(prev => ({
+      ...prev,
+      selectedPromptIds: prev.selectedPromptIds.includes(promptId)
+        ? prev.selectedPromptIds.filter(id => id !== promptId)
+        : [...prev.selectedPromptIds, promptId]
+    }))
   }
 
   if (loading) {
@@ -286,8 +341,8 @@ export default function BrandsPage() {
                     )}
 
                     <div>
-                      <p className="text-sm font-medium mb-2">Monitoring Frequency</p>
-                      <p className="text-sm text-muted-foreground">Every 6 hours</p>
+                      <p className="text-sm font-medium mb-2">Monitoring</p>
+                      <p className="text-sm text-muted-foreground">Manual only</p>
                     </div>
 
                     <div className="flex gap-2 pt-2">
@@ -300,7 +355,7 @@ export default function BrandsPage() {
                       </Button>
                       <Button
                         className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
-                        onClick={() => runMonitoring(brand.id)}
+                        onClick={() => openMonitorDialog(brand.id)}
                         disabled={monitoring.has(brand.id)}
                       >
                         {monitoring.has(brand.id) ? (
@@ -383,6 +438,169 @@ export default function BrandsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Monitor Configuration Dialog */}
+      <Dialog open={monitorDialogOpen} onOpenChange={setMonitorDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-orange-500" />
+              Configure Monitoring Run
+            </DialogTitle>
+            <DialogDescription>
+              Choose how to monitor your brand across AI platforms
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Monitoring Mode Selection */}
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Monitoring Mode</Label>
+
+              <div className="space-y-3">
+                {/* Default Queries Option */}
+                <div
+                  className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${
+                    !monitorFormData.useCustomPrompts
+                      ? 'border-orange-500 bg-orange-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setMonitorFormData({ ...monitorFormData, useCustomPrompts: false, selectedPromptIds: [] })}
+                >
+                  <input
+                    type="radio"
+                    checked={!monitorFormData.useCustomPrompts}
+                    onChange={() => setMonitorFormData({ ...monitorFormData, useCustomPrompts: false, selectedPromptIds: [] })}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium">Auto-Generated Queries</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Use 5 automatically generated queries based on your brand's industry
+                    </div>
+                  </div>
+                </div>
+
+                {/* Custom Prompts Option */}
+                <div
+                  className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${
+                    monitorFormData.useCustomPrompts
+                      ? 'border-orange-500 bg-orange-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                  onClick={() => setMonitorFormData({ ...monitorFormData, useCustomPrompts: true })}
+                >
+                  <input
+                    type="radio"
+                    checked={monitorFormData.useCustomPrompts}
+                    onChange={() => setMonitorFormData({ ...monitorFormData, useCustomPrompts: true })}
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium">Custom Prompts</div>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Select specific prompts from your library ({customPrompts.length} available)
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Custom Prompts Selection */}
+            {monitorFormData.useCustomPrompts && (
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">
+                  Select Prompts ({monitorFormData.selectedPromptIds.length} selected)
+                </Label>
+
+                {customPrompts.length === 0 ? (
+                  <div className="text-center py-8 border border-dashed rounded-lg">
+                    <Sparkles className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-sm text-muted-foreground mb-4">
+                      No custom prompts available. Create prompts first.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push('/dashboard/prompts')}
+                    >
+                      Go to Prompts
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto border rounded-lg p-3">
+                    {customPrompts.map(prompt => (
+                      <div
+                        key={prompt.id}
+                        className={`flex items-start gap-3 p-3 border rounded-md cursor-pointer transition-colors ${
+                          monitorFormData.selectedPromptIds.includes(prompt.id)
+                            ? 'border-orange-500 bg-orange-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => togglePromptSelection(prompt.id)}
+                      >
+                        <Checkbox
+                          checked={monitorFormData.selectedPromptIds.includes(prompt.id)}
+                          onCheckedChange={() => togglePromptSelection(prompt.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm">{prompt.name}</div>
+                          {prompt.category && (
+                            <Badge variant="outline" className="text-xs mt-1">
+                              {prompt.category}
+                            </Badge>
+                          )}
+                          <p className="text-xs text-muted-foreground font-mono mt-2 truncate">
+                            {prompt.prompt_text}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Cost Estimate */}
+            <div className="bg-muted/50 p-4 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5" />
+                <div className="text-sm">
+                  <div className="font-medium mb-1">Estimated Cost</div>
+                  <div className="text-muted-foreground">
+                    {monitorFormData.useCustomPrompts
+                      ? `${monitorFormData.selectedPromptIds.length} prompts × 4 platforms = ${monitorFormData.selectedPromptIds.length * 4} queries`
+                      : '5 auto-generated queries × 4 platforms = 20 queries'
+                    }
+                    <br />
+                    Approximate cost: ${monitorFormData.useCustomPrompts
+                      ? (monitorFormData.selectedPromptIds.length * 4 * 0.002).toFixed(4)
+                      : '0.0400'
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setMonitorDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={runMonitoring}
+              disabled={monitorFormData.useCustomPrompts && monitorFormData.selectedPromptIds.length === 0}
+              className="bg-orange-500 hover:bg-orange-600"
+            >
+              Start Monitoring
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

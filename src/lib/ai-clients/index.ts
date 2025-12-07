@@ -1,11 +1,15 @@
 import { queryOpenAI } from './openai'
 import { queryClaude } from './anthropic'
 import { queryGemini } from './gemini'
+import { queryPerplexity } from './perplexity'
+import { queryGrok } from './grok'
 import { AIClientResponse, AIPlatform } from '@/types'
 
 export * from './openai'
 export * from './anthropic'
 export * from './gemini'
+export * from './perplexity'
+export * from './grok'
 
 /**
  * Query all AI platforms in parallel for a given prompt
@@ -28,12 +32,10 @@ export async function queryAllPlatforms(
         promises.push(queryGemini(prompt))
         break
       case 'perplexity':
-        // TODO: Implement Perplexity client
-        console.warn('Perplexity not yet implemented')
+        promises.push(queryPerplexity(prompt))
         break
       case 'grok':
-        // TODO: Implement Grok client
-        console.warn('Grok not yet implemented')
+        promises.push(queryGrok(prompt))
         break
     }
   })
@@ -65,9 +67,9 @@ export async function queryPlatform(
     case 'gemini':
       return queryGemini(prompt, model)
     case 'perplexity':
-      throw new Error('Perplexity not yet implemented')
+      return queryPerplexity(prompt, model)
     case 'grok':
-      throw new Error('Grok not yet implemented')
+      return queryGrok(prompt, model)
     default:
       throw new Error(`Unknown platform: ${platform}`)
   }
