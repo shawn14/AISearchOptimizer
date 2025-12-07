@@ -30,7 +30,9 @@ export default function PricingPage() {
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-gray-900" />
+              <div className="h-8 w-8 bg-gray-900 rounded-md flex items-center justify-center">
+                <span className="text-white font-bold text-sm">R</span>
+              </div>
               <span className="font-semibold text-lg text-gray-900">RevIntel</span>
             </Link>
             <div className="flex items-center gap-6">
@@ -291,7 +293,9 @@ export default function PricingPage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="h-5 w-5 text-gray-900" />
+                <div className="h-8 w-8 bg-gray-900 rounded-md flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">R</span>
+                </div>
                 <span className="font-semibold text-gray-900">RevIntel</span>
               </div>
               <p className="text-sm text-gray-600">
