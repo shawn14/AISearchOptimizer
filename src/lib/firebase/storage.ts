@@ -98,6 +98,7 @@ export interface Brand {
   website_url: string
   industry: string | null
   description: string | null
+  is_primary?: boolean
   created_at: Date
   updated_at: Date
 }
