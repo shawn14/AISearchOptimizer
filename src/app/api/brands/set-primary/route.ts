@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getBrands, updateBrand } from '@/lib/file-storage'
+import { getAllBrands, updateBrand } from '@/lib/firebase/storage'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Read all brands
-    const brands = await getBrands()
+    const brands = await getAllBrands()
 
     // Find the brand to set as primary
     const targetBrand = brands.find(b => b.id === brandId)
@@ -27,13 +27,13 @@ export async function POST(request: NextRequest) {
 
     // Set all brands to not primary
     for (const brand of brands) {
-      if (brand.id !== brandId && (brand as any).is_primary) {
-        await updateBrand(brand.id, { is_primary: false } as any)
+      if (brand.id !== brandId && brand.is_primary) {
+        await updateBrand(brand.id, { is_primary: false })
       }
     }
 
     // Set the selected brand as primary
-    const updatedBrand = await updateBrand(brandId, { is_primary: true } as any)
+    const updatedBrand = await updateBrand(brandId, { is_primary: true })
 
     return NextResponse.json({
       success: true,
