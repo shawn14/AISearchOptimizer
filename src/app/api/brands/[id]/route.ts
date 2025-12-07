@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { deleteBrand } from '@/lib/file-storage'
+import { deleteBrand } from '@/lib/firebase/storage'
 
 export async function DELETE(
   request: NextRequest,
@@ -15,19 +15,12 @@ export async function DELETE(
       )
     }
 
-    const deleted = await deleteBrand(id)
+    await deleteBrand(id)
 
-    if (deleted) {
-      return NextResponse.json({
-        success: true,
-        message: 'Brand deleted successfully'
-      })
-    } else {
-      return NextResponse.json(
-        { error: 'Brand not found' },
-        { status: 404 }
-      )
-    }
+    return NextResponse.json({
+      success: true,
+      message: 'Brand deleted successfully'
+    })
   } catch (error: any) {
     console.error('Error deleting brand:', error)
     return NextResponse.json(
