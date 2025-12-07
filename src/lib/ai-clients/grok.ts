@@ -4,7 +4,7 @@ import { AIClientResponse } from '@/types'
 // https://docs.x.ai/docs
 export async function queryGrok(
   prompt: string,
-  model: string = 'grok-beta'
+  model: string = 'grok-2-1212'
 ): Promise<AIClientResponse> {
   const startTime = Date.now()
   const apiKey = process.env.GROK_API_KEY
@@ -73,14 +73,13 @@ export async function queryGrok(
 }
 
 function calculateGrokCost(model: string, inputTokens: number, outputTokens: number): number {
-  // Grok pricing as of 2024 - update as needed
-  // Note: Pricing not publicly available yet, using estimates
+  // Grok pricing as of 2025
   const pricing: Record<string, { input: number; output: number }> = {
-    'grok-beta': { input: 5 / 1_000_000, output: 15 / 1_000_000 },
+    'grok-2-1212': { input: 2 / 1_000_000, output: 10 / 1_000_000 },
     'grok-2': { input: 2 / 1_000_000, output: 10 / 1_000_000 },
   }
 
-  const modelKey = Object.keys(pricing).find(key => model.includes(key)) || 'grok-beta'
+  const modelKey = Object.keys(pricing).find(key => model.includes(key)) || 'grok-2-1212'
   const rates = pricing[modelKey]
 
   return (inputTokens * rates.input) + (outputTokens * rates.output)

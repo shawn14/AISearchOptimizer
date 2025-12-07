@@ -37,6 +37,7 @@ export interface Brand {
   target_keywords?: string[]
   brand_voice_profile?: Record<string, any>
   monitoring_enabled: boolean
+  is_primary?: boolean
   created_at: Date
   updated_at: Date
 }

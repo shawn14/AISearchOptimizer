@@ -5,6 +5,7 @@ const DATA_DIR = path.join(process.cwd(), 'data')
 const BRANDS_FILE = path.join(DATA_DIR, 'brands.json')
 const AUDITS_FILE = path.join(DATA_DIR, 'audits.json')
 const MONITORING_FILE = path.join(DATA_DIR, 'monitoring.json')
+const COMPETITORS_FILE = path.join(DATA_DIR, 'competitors.json')
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -17,6 +18,7 @@ interface Brand {
   website_url: string
   industry: string | null
   description: string | null
+  is_primary?: boolean
   created_at: string
   updated_at: string
 }
@@ -46,6 +48,14 @@ interface MonitoringRun {
   individual_results: any[]
   total_cost: number
   timestamp: string
+}
+
+interface Competitor {
+  id: string
+  brand_id: string
+  name: string
+  created_at: string
+  updated_at: string
 }
 
 // File operations
@@ -241,4 +251,58 @@ export async function getMonitoringRuns(brandId?: string, limit: number = 50): P
 export async function getLatestMonitoringRun(brandId: string): Promise<MonitoringRun | null> {
   const runs = await getMonitoringRuns(brandId, 1)
   return runs[0] || null
+}
+
+// Competitor functions
+function readCompetitorsFromFile(): Competitor[] {
+  try {
+    if (fs.existsSync(COMPETITORS_FILE)) {
+      const data = fs.readFileSync(COMPETITORS_FILE, 'utf-8')
+      return JSON.parse(data)
+    }
+  } catch (error) {
+    console.error('Error reading competitors file:', error)
+  }
+  return []
+}
+
+function writeCompetitorsToFile(competitors: Competitor[]) {
+  try {
+    fs.writeFileSync(COMPETITORS_FILE, JSON.stringify(competitors, null, 2), 'utf-8')
+  } catch (error) {
+    console.error('Error writing competitors file:', error)
+  }
+}
+
+export async function getCompetitors(brandId?: string): Promise<Competitor[]> {
+  const competitors = readCompetitorsFromFile()
+  if (brandId) {
+    return competitors.filter(c => c.brand_id === brandId)
+  }
+  return competitors
+}
+
+export async function createCompetitor(competitor: Omit<Competitor, 'id' | 'created_at' | 'updated_at'>): Promise<Competitor> {
+  const competitors = readCompetitorsFromFile()
+  const now = new Date().toISOString()
+  const newCompetitor: Competitor = {
+    id: `comp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    ...competitor,
+    created_at: now,
+    updated_at: now,
+  }
+  competitors.push(newCompetitor)
+  writeCompetitorsToFile(competitors)
+  return newCompetitor
+}
+
+export async function deleteCompetitor(id: string): Promise<boolean> {
+  const competitors = readCompetitorsFromFile()
+  const index = competitors.findIndex(c => c.id === id)
+  if (index >= 0) {
+    competitors.splice(index, 1)
+    writeCompetitorsToFile(competitors)
+    return true
+  }
+  return false
 }

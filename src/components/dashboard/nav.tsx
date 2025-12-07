@@ -65,11 +65,6 @@ const navigation = [
     icon: MessageSquare,
   },
   {
-    name: "Citations",
-    href: "/dashboard/citations",
-    icon: Quote,
-  },
-  {
     name: "Traffic",
     href: "/dashboard/traffic",
     icon: TrendingUp,

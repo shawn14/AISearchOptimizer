@@ -15,6 +15,7 @@ export interface BrandMentionResult {
   response_text: string
   position?: number // Position in response (1-based)
   cost: number
+  citations?: string[] // URLs cited in the response
 }
 
 export interface MonitoringResult {
@@ -154,10 +155,10 @@ async function queryPlatform(
         response = await queryGemini(query, 'gemini-1.5-flash')
         break
       case 'perplexity':
-        response = await queryPerplexity(query, 'llama-3.1-sonar-small-128k-online')
+        response = await queryPerplexity(query, 'sonar')
         break
       case 'grok':
-        response = await queryGrok(query, 'grok-beta')
+        response = await queryGrok(query, 'grok-2-1212')
         break
       default:
         throw new Error(`Unknown platform: ${platform}`)
@@ -171,6 +172,7 @@ async function queryPlatform(
       query,
       response_text: response.text,
       cost: response.metadata.cost,
+      citations: response.citations || [],
       ...analysis,
     }
   } catch (error) {

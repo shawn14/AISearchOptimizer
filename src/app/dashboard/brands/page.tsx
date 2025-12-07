@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Plus, TrendingUp, AlertCircle, Loader2, Sparkles } from "lucide-react"
+import { Plus, TrendingUp, AlertCircle, Loader2, Sparkles, Star } from "lucide-react"
 
 interface CustomPrompt {
   id: string
@@ -26,6 +26,7 @@ interface Brand {
   website_url: string
   industry: string | null
   description: string | null
+  is_primary?: boolean
   created_at: string
   updated_at: string
 }
@@ -195,6 +196,24 @@ export default function BrandsPage() {
     }))
   }
 
+  async function setPrimaryBrand(brandId: string) {
+    try {
+      const response = await fetch('/api/brands/set-primary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandId }),
+      })
+
+      if (response.ok) {
+        await fetchBrands()
+      } else {
+        console.error('Failed to set primary brand')
+      }
+    } catch (error) {
+      console.error('Error setting primary brand:', error)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -304,17 +323,36 @@ export default function BrandsPage() {
             {brands.map((brand) => {
               const stats = brandStats[brand.id]
               return (
-              <Card key={brand.id}>
+              <Card key={brand.id} className={brand.is_primary ? 'border-orange-500 border-2 bg-orange-50/50' : ''}>
                 <CardHeader>
                   <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle>{brand.name}</CardTitle>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <CardTitle>{brand.name}</CardTitle>
+                        {brand.is_primary && (
+                          <Badge className="bg-orange-500 hover:bg-orange-600">
+                            <Star className="h-3 w-3 mr-1 fill-white" />
+                            Primary
+                          </Badge>
+                        )}
+                      </div>
                       <CardDescription>{brand.website_url}</CardDescription>
                       {brand.industry && (
                         <Badge variant="outline" className="mt-2">{brand.industry}</Badge>
                       )}
                     </div>
-                    <Badge>{stats ? 'Active' : 'Not Monitored'}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPrimaryBrand(brand.id)}
+                        className={brand.is_primary ? 'text-orange-500' : 'text-muted-foreground'}
+                        title={brand.is_primary ? 'Primary brand' : 'Set as primary brand'}
+                      >
+                        <Star className={`h-4 w-4 ${brand.is_primary ? 'fill-orange-500' : ''}`} />
+                      </Button>
+                      <Badge>{stats ? 'Active' : 'Not Monitored'}</Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>

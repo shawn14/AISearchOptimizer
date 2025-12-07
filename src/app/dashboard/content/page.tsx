@@ -149,8 +149,9 @@ export default function ContentPage() {
   return (
     <div className="space-y-6">
       {/* Header with Actions */}
-      <div className="flex justify-between items-start">
-        <div className="relative w-96">
+      <div className="space-y-4">
+        {/* Search Bar */}
+        <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={`Search from ${pages.length} URLs or titles...`}
@@ -168,30 +169,18 @@ export default function ContentPage() {
           )}
         </div>
 
-        <div className="flex gap-2 items-center">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter URL to audit..."
-              value={newPageUrl}
-              onChange={(e) => setNewPageUrl(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addPage()}
-              className="w-64"
-            />
-            <Button variant="outline" size="sm" onClick={addPage} disabled={!newPageUrl.trim()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Page
-            </Button>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 border rounded-md">
-            <div className="w-32 h-1 bg-gradient-to-r from-gray-300 via-gray-500 to-gray-700 rounded-full" />
-            <span className="text-sm font-medium">{selectedPages.length}/{pages.length}</span>
-          </div>
-          <Button variant="outline" size="sm">
-            Track {selectedPages.length} pages
-          </Button>
-          <Button size="sm">
-            <Rocket className="mr-2 h-4 w-4" />
-            Start Campaign
+        {/* Actions Row */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <Input
+            placeholder="Enter URL to audit..."
+            value={newPageUrl}
+            onChange={(e) => setNewPageUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addPage()}
+            className="w-64"
+          />
+          <Button variant="outline" size="sm" onClick={addPage} disabled={!newPageUrl.trim()}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Page
           </Button>
         </div>
       </div>

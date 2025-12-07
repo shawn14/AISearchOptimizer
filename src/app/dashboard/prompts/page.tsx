@@ -1,70 +1,93 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, TrendingUp, Lightbulb, Target, Zap, BookmarkPlus } from "lucide-react"
+import { Search, TrendingUp, Lightbulb, Target, Zap, BookmarkPlus, Loader2 } from "lucide-react"
+
+interface TrendingPrompt {
+  id: string
+  prompt: string
+  volume: number
+  difficulty: string
+  category: string
+  trend: string
+  competitors: number
+}
+
+interface TrendingPromptsData {
+  prompts: TrendingPrompt[]
+  hasData: boolean
+  brandName?: string
+  industry?: string
+}
 
 export default function PromptResearchPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const [data, setData] = useState<TrendingPromptsData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Mock trending prompts data
-  const trendingPrompts = [
-    {
-      id: "1",
-      prompt: "What are the best AI search optimization tools?",
-      volume: 1240,
-      difficulty: "Medium",
-      category: "Tools",
-      trend: "+45%",
-      competitors: 12
-    },
-    {
-      id: "2",
-      prompt: "How to optimize website for AI search engines",
-      volume: 980,
-      difficulty: "High",
-      category: "SEO",
-      trend: "+32%",
-      competitors: 18
-    },
-    {
-      id: "3",
-      prompt: "Best practices for ChatGPT visibility",
-      volume: 756,
-      difficulty: "Medium",
-      category: "Best Practices",
-      trend: "+28%",
-      competitors: 8
-    },
-    {
-      id: "4",
-      prompt: "AI search vs traditional SEO differences",
-      volume: 620,
-      difficulty: "Low",
-      category: "Education",
-      trend: "+67%",
-      competitors: 5
-    },
-    {
-      id: "5",
-      prompt: "Perplexity AI citation strategies",
-      volume: 420,
-      difficulty: "Medium",
-      category: "Strategy",
-      trend: "+91%",
-      competitors: 6
-    },
-  ]
+  useEffect(() => {
+    async function fetchTrendingPrompts() {
+      try {
+        const response = await fetch("/api/trending-prompts")
+        const result = await response.json()
+        setData(result)
+      } catch (error) {
+        console.error("Failed to fetch trending prompts:", error)
+        setData({ prompts: [], hasData: false })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchTrendingPrompts()
+  }, [])
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!data || !data.hasData) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Prompt Research</h1>
+          <p className="text-muted-foreground">
+            Discover what people are asking AI about your industry
+          </p>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Brand Data Found</h3>
+              <p className="text-muted-foreground mb-6">
+                Add a brand to see trending prompts relevant to your industry
+              </p>
+              <Button asChild>
+                <a href="/dashboard/brands">Add Your Brand</a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const trendingPrompts = data.prompts
 
   // Opportunity prompts (low competition, high volume)
   const opportunityPrompts = trendingPrompts.filter(p => p.competitors < 10 && p.volume > 500)
 
   // Categories
-  const categories = ["all", "Tools", "SEO", "Best Practices", "Education", "Strategy"]
+  const categories = ["all", ...Array.from(new Set(trendingPrompts.map(p => p.category)))]
 
   const filteredPrompts = selectedCategory === "all"
     ? trendingPrompts
@@ -85,7 +108,10 @@ export default function PromptResearchPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Prompt Research</h1>
         <p className="text-muted-foreground">
-          Discover what people are asking AI about your industry
+          {data.brandName && data.industry
+            ? `Discover what people are asking AI about ${data.brandName} and the ${data.industry} industry`
+            : "Discover what people are asking AI about your industry"
+          }
         </p>
       </div>
 

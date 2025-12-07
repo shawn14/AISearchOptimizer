@@ -4,7 +4,7 @@ import { AIClientResponse } from '@/types'
 // https://docs.perplexity.ai/docs/getting-started
 export async function queryPerplexity(
   prompt: string,
-  model: string = 'llama-3.1-sonar-small-128k-online'
+  model: string = 'sonar'
 ): Promise<AIClientResponse> {
   const startTime = Date.now()
   const apiKey = process.env.PERPLEXITY_API_KEY
@@ -70,14 +70,14 @@ export async function queryPerplexity(
 }
 
 function calculatePerplexityCost(model: string, inputTokens: number, outputTokens: number): number {
-  // Perplexity pricing as of 2024 - update as needed
+  // Perplexity pricing as of 2025
   const pricing: Record<string, { input: number; output: number }> = {
-    'llama-3.1-sonar-small-128k-online': { input: 0.2 / 1_000_000, output: 0.2 / 1_000_000 },
-    'llama-3.1-sonar-large-128k-online': { input: 1 / 1_000_000, output: 1 / 1_000_000 },
-    'llama-3.1-sonar-huge-128k-online': { input: 5 / 1_000_000, output: 5 / 1_000_000 },
+    'sonar': { input: 0.2 / 1_000_000, output: 0.2 / 1_000_000 },
+    'sonar-pro': { input: 3 / 1_000_000, output: 15 / 1_000_000 },
+    'sonar-reasoning': { input: 1 / 1_000_000, output: 5 / 1_000_000 },
   }
 
-  const modelKey = Object.keys(pricing).find(key => model.includes(key)) || 'llama-3.1-sonar-small-128k-online'
+  const modelKey = Object.keys(pricing).find(key => model.includes(key)) || 'sonar'
   const rates = pricing[modelKey]
 
   return (inputTokens * rates.input) + (outputTokens * rates.output)

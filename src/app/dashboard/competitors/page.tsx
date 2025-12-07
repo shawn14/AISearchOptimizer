@@ -1,221 +1,245 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Users,
   TrendingUp,
-  TrendingDown,
-  Plus,
-  X,
   BarChart3,
   Award,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  MessageSquare,
+  Sparkles,
+  Star
 } from "lucide-react"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts'
 
-interface Competitor {
+interface CompetitorMention {
+  brand: string
+  mentions: number
+  queries: string[]
+  platforms: string[]
+}
+
+interface Brand {
   id: string
   name: string
-  visibility_score: number
-  total_mentions: number
-  queries_tested: number
-  avg_sentiment: number
-  trend: 'up' | 'down' | 'stable'
+  website_url?: string
+  is_primary?: boolean
 }
 
 export default function CompetitorsPage() {
-  const [competitors, setCompetitors] = useState<Competitor[]>([])
-  const [newCompetitorName, setNewCompetitorName] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [myBrand, setMyBrand] = useState<Competitor | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [competitorMentions, setCompetitorMentions] = useState<CompetitorMention[]>([])
+  const [brands, setBrands] = useState<Brand[]>([])
+  const [selectedBrandId, setSelectedBrandId] = useState<string>('')
+  const [myBrand, setMyBrand] = useState<string | null>(null)
+  const [totalQueries, setTotalQueries] = useState(0)
 
   useEffect(() => {
-    fetchCompetitors()
+    fetchBrands()
   }, [])
 
-  async function fetchCompetitors() {
+  useEffect(() => {
+    if (selectedBrandId) {
+      fetchCompetitorData(selectedBrandId)
+    }
+  }, [selectedBrandId])
+
+  async function fetchBrands() {
     try {
-      // Fetch monitoring runs
-      const response = await fetch('/api/monitoring')
-      const data = await response.json()
+      const brandsResponse = await fetch('/api/brands')
+      const brandsData = await brandsResponse.json()
+      const allBrands = brandsData.brands || []
 
-      // Get latest run for "my brand"
-      const latestRun = data.runs?.[0]
-      if (latestRun) {
-        setMyBrand({
-          id: 'my-brand',
-          name: latestRun.brand_name,
-          visibility_score: latestRun.visibility_score,
-          total_mentions: latestRun.total_mentions,
-          queries_tested: latestRun.queries_tested,
-          avg_sentiment: 0.7,
-          trend: 'up'
-        })
+      setBrands(allBrands)
+
+      // Auto-select primary brand or first brand
+      const primaryBrand = allBrands.find((b: Brand) => b.is_primary)
+      const brandToSelect = primaryBrand || allBrands[0]
+
+      if (brandToSelect) {
+        setSelectedBrandId(brandToSelect.id)
+      } else {
+        setLoading(false)
       }
-
-      // Mock competitor data for now
-      const mockCompetitors: Competitor[] = [
-        {
-          id: '1',
-          name: 'Competitor A',
-          visibility_score: 65,
-          total_mentions: 45,
-          queries_tested: 100,
-          avg_sentiment: 0.6,
-          trend: 'stable'
-        },
-        {
-          id: '2',
-          name: 'Competitor B',
-          visibility_score: 72,
-          total_mentions: 58,
-          queries_tested: 100,
-          avg_sentiment: 0.65,
-          trend: 'up'
-        }
-      ]
-
-      setCompetitors(mockCompetitors)
     } catch (error) {
-      console.error('Failed to fetch competitors:', error)
+      console.error('Failed to fetch brands:', error)
+      setLoading(false)
     }
   }
 
-  async function addCompetitor() {
-    if (!newCompetitorName.trim()) return
-
+  async function fetchCompetitorData(brandId: string) {
     setLoading(true)
     try {
-      // In a real implementation, this would trigger monitoring for the competitor
-      const newCompetitor: Competitor = {
-        id: Date.now().toString(),
-        name: newCompetitorName,
-        visibility_score: Math.floor(Math.random() * 40) + 40,
-        total_mentions: Math.floor(Math.random() * 50) + 20,
-        queries_tested: 100,
-        avg_sentiment: 0.5 + Math.random() * 0.3,
-        trend: ['up', 'down', 'stable'][Math.floor(Math.random() * 3)] as 'up' | 'down' | 'stable'
+      // Get the selected brand
+      const brand = brands.find(b => b.id === brandId)
+
+      if (!brand) {
+        setLoading(false)
+        return
       }
 
-      setCompetitors([...competitors, newCompetitor])
-      setNewCompetitorName("")
+      setMyBrand(brand.name)
+
+      // Get monitoring data
+      const monitoringResponse = await fetch('/api/monitoring')
+      const monitoringData = await monitoringResponse.json()
+      const latestRun = monitoringData.runs?.[0]
+
+      if (!latestRun?.individual_results) {
+        setLoading(false)
+        return
+      }
+
+      setTotalQueries(latestRun.queries_tested)
+
+      // Extract all brand mentions from responses
+      const brandMentions = new Map<string, CompetitorMention>()
+
+      latestRun.individual_results.forEach((result: any) => {
+        const text = result.response_text?.toLowerCase() || ''
+
+        // Common competitor/brand patterns
+        const brandPatterns = [
+          /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g // Brand names (capitalized words)
+        ]
+
+        // Extract potential brand names (excluding common words)
+        const commonWords = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'from', 'are', 'have', 'can', 'will', 'some', 'other', 'their', 'what', 'here'])
+
+        const words = result.response_text?.split(/\s+/) || []
+        words.forEach((word: string) => {
+          const cleaned = word.replace(/[^a-zA-Z]/g, '')
+          if (cleaned.length > 2 && /^[A-Z]/.test(cleaned) && !commonWords.has(cleaned.toLowerCase())) {
+            const key = cleaned.toLowerCase()
+
+            if (!brandMentions.has(key)) {
+              brandMentions.set(key, {
+                brand: cleaned,
+                mentions: 0,
+                queries: [],
+                platforms: []
+              })
+            }
+
+            const mention = brandMentions.get(key)!
+            mention.mentions++
+
+            if (!mention.queries.includes(result.query)) {
+              mention.queries.push(result.query)
+            }
+            if (!mention.platforms.includes(result.platform)) {
+              mention.platforms.push(result.platform)
+            }
+          }
+        })
+      })
+
+      // Filter out your brand and sort by mentions
+      const competitors = Array.from(brandMentions.values())
+        .filter(m => m.brand.toLowerCase() !== brand.name.toLowerCase())
+        .filter(m => m.mentions >= 2) // Only brands mentioned at least twice
+        .sort((a, b) => b.mentions - a.mentions)
+        .slice(0, 15) // Top 15
+
+      setCompetitorMentions(competitors)
     } catch (error) {
-      console.error('Failed to add competitor:', error)
+      console.error('Failed to fetch competitor data:', error)
     } finally {
       setLoading(false)
     }
   }
 
-  function removeCompetitor(id: string) {
-    setCompetitors(competitors.filter(c => c.id !== id))
+  const chartData = competitorMentions.slice(0, 10).map(comp => ({
+    name: comp.brand,
+    mentions: comp.mentions,
+    queries: comp.queries.length
+  }))
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading industry landscape...</p>
+        </div>
+      </div>
+    )
   }
 
-  // Prepare comparison data
-  const allBrands = myBrand ? [myBrand, ...competitors] : competitors
-
-  const comparisonData = [
-    {
-      metric: 'Visibility',
-      [myBrand?.name || 'You']: myBrand?.visibility_score || 0,
-      ...Object.fromEntries(competitors.map(c => [c.name, c.visibility_score]))
-    },
-    {
-      metric: 'Mentions',
-      [myBrand?.name || 'You']: myBrand ? (myBrand.total_mentions / myBrand.queries_tested * 100) : 0,
-      ...Object.fromEntries(competitors.map(c => [c.name, (c.total_mentions / c.queries_tested * 100)]))
-    },
-    {
-      metric: 'Sentiment',
-      [myBrand?.name || 'You']: myBrand ? (myBrand.avg_sentiment * 100) : 0,
-      ...Object.fromEntries(competitors.map(c => [c.name, c.avg_sentiment * 100]))
-    }
-  ]
-
-  // Radar chart data
-  const radarData = [
-    {
-      subject: 'Visibility',
-      You: myBrand?.visibility_score || 0,
-      ...Object.fromEntries(competitors.slice(0, 2).map(c => [c.name, c.visibility_score]))
-    },
-    {
-      subject: 'Mentions',
-      You: myBrand ? (myBrand.total_mentions / myBrand.queries_tested * 100) : 0,
-      ...Object.fromEntries(competitors.slice(0, 2).map(c => [c.name, (c.total_mentions / c.queries_tested * 100)]))
-    },
-    {
-      subject: 'Sentiment',
-      You: myBrand ? (myBrand.avg_sentiment * 100) : 0,
-      ...Object.fromEntries(competitors.slice(0, 2).map(c => [c.name, c.avg_sentiment * 100]))
-    },
-    {
-      subject: 'Coverage',
-      You: myBrand ? 75 : 0,
-      ...Object.fromEntries(competitors.slice(0, 2).map(c => [c.name, Math.random() * 30 + 50]))
-    }
-  ]
-
-  // Calculate rankings
-  const rankings = allBrands
-    .sort((a, b) => b.visibility_score - a.visibility_score)
-    .map((brand, index) => ({ ...brand, rank: index + 1 }))
-
-  const myRank = rankings.find(r => r.id === 'my-brand')?.rank || 0
+  const selectedBrand = brands.find(b => b.id === selectedBrandId)
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">Competitor Analysis</h1>
-          <p className="text-muted-foreground">
-            Track and compare your performance against competitors
-          </p>
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-3xl font-bold">Industry Landscape</h1>
+          {brands.length > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">Viewing landscape for:</span>
+              <Select value={selectedBrandId} onValueChange={setSelectedBrandId}>
+                <SelectTrigger className="w-[250px]">
+                  <SelectValue>
+                    <div className="flex items-center gap-2">
+                      {selectedBrand?.is_primary && (
+                        <Star className="h-3 w-3 fill-orange-500 text-orange-500" />
+                      )}
+                      <span>{selectedBrand?.name || 'Select a brand'}</span>
+                    </div>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {brands.map((brand) => (
+                    <SelectItem key={brand.id} value={brand.id}>
+                      <div className="flex items-center gap-2">
+                        {brand.is_primary && (
+                          <Star className="h-3 w-3 fill-orange-500 text-orange-500" />
+                        )}
+                        <span>{brand.name}</span>
+                        {brand.is_primary && (
+                          <Badge variant="secondary" className="ml-2 text-xs">Primary</Badge>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
+        <p className="text-muted-foreground">
+          See which other brands appear alongside {myBrand || 'your brand'} in AI responses
+        </p>
       </div>
 
-      {/* Add Competitor */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Add Competitor</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-3">
-            <Input
-              placeholder="Enter competitor brand name..."
-              value={newCompetitorName}
-              onChange={(e) => setNewCompetitorName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addCompetitor()}
-              className="flex-1"
-            />
-            <Button onClick={addCompetitor} disabled={loading || !newCompetitorName.trim()}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Competitor
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            We'll start monitoring this competitor across all AI platforms
-          </p>
-        </CardContent>
-      </Card>
-
       {/* Overview Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Your Rank</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Your Brand</CardTitle>
               <Award className="h-4 w-4 text-muted-foreground" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">#{myRank}</div>
+            <div className="text-2xl font-bold">{myBrand || 'N/A'}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Out of {allBrands.length} brands
+              Being tracked
             </p>
           </CardContent>
         </Card>
@@ -223,33 +247,14 @@ export default function CompetitorsPage() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Visibility Gap</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {myBrand && competitors.length > 0
-                ? `${Math.abs(myBrand.visibility_score - Math.max(...competitors.map(c => c.visibility_score)))}%`
-                : 'N/A'}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              To #1 competitor
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Tracking</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Brands Detected</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{competitors.length}</div>
+            <div className="text-2xl font-bold">{competitorMentions.length}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Competitors monitored
+              In AI responses
             </p>
           </CardContent>
         </Card>
@@ -257,190 +262,97 @@ export default function CompetitorsPage() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Share of Voice</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Queries Analyzed</CardTitle>
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {myBrand ? Math.round((myBrand.total_mentions / allBrands.reduce((sum, b) => sum + b.total_mentions, 0)) * 100) : 0}%
-            </div>
+            <div className="text-2xl font-bold">{totalQueries}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Of total mentions
+              Total queries tested
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Radar Comparison */}
-      {myBrand && competitors.length > 0 && (
+      {/* Chart */}
+      {competitorMentions.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Competitive Positioning</CardTitle>
+            <CardTitle>Top Mentioned Brands</CardTitle>
+            <CardDescription>Brands that appear most frequently alongside yours</CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={radarData}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="subject" />
-                <PolarRadiusAxis angle={90} domain={[0, 100]} />
-                <Radar name="You" dataKey="You" stroke="#6366f1" fill="#6366f1" fillOpacity={0.3} />
-                {competitors.slice(0, 2).map((comp, i) => (
-                  <Radar
-                    key={comp.id}
-                    name={comp.name}
-                    dataKey={comp.name}
-                    stroke={i === 0 ? '#f59e0b' : '#10b981'}
-                    fill={i === 0 ? '#f59e0b' : '#10b981'}
-                    fillOpacity={0.2}
-                  />
-                ))}
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
                 <Legend />
-              </RadarChart>
+                <Bar dataKey="mentions" fill="#6366f1" name="Total Mentions" />
+                <Bar dataKey="queries" fill="#f59e0b" name="Unique Queries" />
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       )}
 
-      {/* Competitor Cards */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Your Brand */}
-        {myBrand && (
-          <Card className="bg-primary/5 border-primary/20">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CardTitle>{myBrand.name}</CardTitle>
-                  <Badge>You</Badge>
-                </div>
-                <Badge variant={myBrand.trend === 'up' ? 'default' : myBrand.trend === 'down' ? 'destructive' : 'secondary'}>
-                  {myBrand.trend === 'up' ? <TrendingUp className="h-3 w-3 mr-1" /> :
-                   myBrand.trend === 'down' ? <TrendingDown className="h-3 w-3 mr-1" /> : null}
-                  {myBrand.trend}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Visibility Score</div>
-                  <div className="text-2xl font-bold">{myBrand.visibility_score}%</div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Mentions</div>
-                  <div className="text-2xl font-bold">{myBrand.total_mentions}/{myBrand.queries_tested}</div>
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground mb-2">Sentiment</div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-green-500"
-                      style={{ width: `${myBrand.avg_sentiment * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-medium">{Math.round(myBrand.avg_sentiment * 100)}%</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Competitors */}
-        {competitors.map((competitor) => (
-          <Card key={competitor.id}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CardTitle>{competitor.name}</CardTitle>
-                  <Badge variant={competitor.trend === 'up' ? 'default' : competitor.trend === 'down' ? 'destructive' : 'secondary'}>
-                    {competitor.trend === 'up' ? <TrendingUp className="h-3 w-3 mr-1" /> :
-                     competitor.trend === 'down' ? <TrendingDown className="h-3 w-3 mr-1" /> : null}
-                    {competitor.trend}
-                  </Badge>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeCompetitor(competitor.id)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Visibility Score</div>
-                  <div className="text-2xl font-bold">{competitor.visibility_score}%</div>
-                  {myBrand && (
-                    <div className={`text-xs mt-1 ${competitor.visibility_score > myBrand.visibility_score ? 'text-red-600' : 'text-green-600'}`}>
-                      {competitor.visibility_score > myBrand.visibility_score ? '+' : ''}{competitor.visibility_score - myBrand.visibility_score} vs you
+      {/* Detailed List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Brand Mention Details</CardTitle>
+          <CardDescription>All brands mentioned in AI responses</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {competitorMentions.length > 0 ? (
+            <div className="space-y-3">
+              {competitorMentions.map((comp, idx) => (
+                <div key={idx} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm">
+                      {idx + 1}
                     </div>
-                  )}
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground mb-1">Mentions</div>
-                  <div className="text-2xl font-bold">{competitor.total_mentions}/{competitor.queries_tested}</div>
-                  {myBrand && (
-                    <div className={`text-xs mt-1 ${competitor.total_mentions > myBrand.total_mentions ? 'text-red-600' : 'text-green-600'}`}>
-                      {competitor.total_mentions > myBrand.total_mentions ? '+' : ''}{competitor.total_mentions - myBrand.total_mentions} vs you
+                    <div>
+                      <div className="font-medium">{comp.brand}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Mentioned in {comp.queries.length} {comp.queries.length === 1 ? 'query' : 'queries'} across {comp.platforms.length} {comp.platforms.length === 1 ? 'platform' : 'platforms'}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground mb-2">Sentiment</div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-amber-500"
-                      style={{ width: `${competitor.avg_sentiment * 100}%` }}
-                    />
                   </div>
-                  <span className="text-sm font-medium">{Math.round(competitor.avg_sentiment * 100)}%</span>
+                  <div className="flex items-center gap-4">
+                    <Badge variant="secondary">{comp.mentions} mentions</Badge>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">No Competitor Data Yet</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Run monitoring to see which brands appear alongside yours
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Insights */}
-      {myBrand && competitors.length > 0 && (
+      {competitorMentions.length > 0 && (
         <Card className="bg-primary/5 border-primary/20">
           <CardContent className="pt-6">
             <div className="flex gap-4">
-              <AlertCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+              <Sparkles className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-semibold mb-2">Competitive Insights</h3>
+                <h3 className="font-semibold mb-2">Key Insights</h3>
                 <ul className="space-y-1 text-sm text-muted-foreground">
-                  {myBrand.visibility_score < Math.max(...competitors.map(c => c.visibility_score)) && (
-                    <li>• Focus on improving visibility - you're behind the leader by {Math.max(...competitors.map(c => c.visibility_score)) - myBrand.visibility_score} points</li>
-                  )}
-                  {myBrand.total_mentions < Math.max(...competitors.map(c => c.total_mentions)) && (
-                    <li>• Increase content coverage - competitors are getting more mentions per query</li>
-                  )}
-                  {myBrand.avg_sentiment < Math.max(...competitors.map(c => c.avg_sentiment)) && (
-                    <li>• Improve brand perception - sentiment scores lag behind top performers</li>
-                  )}
-                  <li>• Your rank: #{myRank} - {myRank === 1 ? "You're leading!" : `${myRank - 1} brands to overtake`}</li>
+                  <li>• <span className="font-medium">{competitorMentions[0]?.brand}</span> appears most frequently ({competitorMentions[0]?.mentions} mentions)</li>
+                  <li>• Total of {competitorMentions.length} different brands mentioned across {totalQueries} queries</li>
+                  <li>• AI models are considering an average of {Math.round(competitorMentions.reduce((sum, c) => sum + c.mentions, 0) / totalQueries)} brands per query</li>
                 </ul>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {competitors.length === 0 && (
-        <Card className="border-dashed">
-          <CardContent className="p-12 text-center">
-            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="font-semibold mb-2">No Competitors Added</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Add competitors to track their AI search performance and compare against your brand
-            </p>
           </CardContent>
         </Card>
       )}

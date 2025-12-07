@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, BarChart3, Target, Sparkles, TrendingUp, Users, Zap, FileText, Search } from "lucide-react";
 import type { Metadata } from "next";
 import { DashboardTabs } from "@/components/home/dashboard-tabs";
+import { InteractiveDemo } from "@/components/home/interactive-demo";
+import { HeroSection } from "@/components/home/hero-section";
 
 export const metadata: Metadata = {
   title: "RevIntel - AI Search Intelligence & Answer Engine Optimization Platform",
@@ -73,37 +75,13 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-20 pb-12 px-6">
-        <div className="container mx-auto max-w-5xl">
-          <div className="text-center space-y-8">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.3]">
-              <span className="text-gray-900">Rank #1 on </span>
-              <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">ChatGPT</span>
-              <span className="text-gray-900">, </span>
-              <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">Google</span>
-              <span className="text-gray-900"> & </span>
-              <span className="bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 bg-clip-text text-transparent">Perplexity</span>
-            </h1>
-            <p className="text-base md:text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
-              When customers ask AI <span className="font-semibold text-gray-900">"what's the best..."</span> your brand should be the answer. Track your rankings, optimize your content, and win every recommendation.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <Button size="lg" className="bg-gray-900 hover:bg-gray-800 text-white rounded-full px-8 h-12 text-base font-medium" asChild>
-                <Link href="/signup">
-                  Start ranking today
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button size="lg" variant="outline" className="rounded-full border-gray-300 px-8 h-12 text-base font-medium hover:bg-gray-50" asChild>
-                <Link href="#demo">See how it works</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HeroSection />
 
       {/* Dashboard Preview - Tabs Section */}
       <DashboardTabs />
+
+      {/* Interactive Demo Section */}
+      <InteractiveDemo />
 
       {/* Features Section */}
       <section id="features" className="py-24 px-6 bg-gray-50">

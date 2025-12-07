@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, Activity, Target, Loader2, Sparkles, Users, MousePointer, BarChart3, Eye } from "lucide-react"
+import { TrendingUp, Activity, Target, Loader2, Sparkles, Users, MousePointer, BarChart3, Eye, Play, Star } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, Area, AreaChart } from 'recharts'
 
 interface MonitoringRun {
@@ -29,6 +29,12 @@ interface PageAudit {
   last_audited_at: string | null
 }
 
+interface Brand {
+  id: string
+  name: string
+  is_primary?: boolean
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -36,10 +42,14 @@ export default function DashboardPage() {
   const [audits, setAudits] = useState<PageAudit[]>([])
   const [gaData, setGaData] = useState<any>(null)
   const [gaConnected, setGaConnected] = useState(false)
+  const [monitoring, setMonitoring] = useState(false)
+  const [monitoringStatus, setMonitoringStatus] = useState<string | null>(null)
+  const [primaryBrand, setPrimaryBrand] = useState<Brand | null>(null)
 
   useEffect(() => {
     fetchData()
     checkGAConnection()
+    fetchPrimaryBrand()
   }, [])
 
   async function checkGAConnection() {
@@ -78,6 +88,20 @@ export default function DashboardPage() {
     }
   }
 
+  async function fetchPrimaryBrand() {
+    try {
+      const brandsResponse = await fetch('/api/brands')
+      const brandsData = await brandsResponse.json()
+      const brands = brandsData.brands || []
+
+      // Find primary brand or use first brand
+      const primary = brands.find((b: Brand) => b.is_primary) || brands[0]
+      setPrimaryBrand(primary || null)
+    } catch (error) {
+      console.error('Failed to fetch brands:', error)
+    }
+  }
+
   async function fetchData() {
     try {
       const [monitoringRes, auditsRes] = await Promise.all([
@@ -94,6 +118,47 @@ export default function DashboardPage() {
       console.error('Failed to fetch data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function runMonitoring() {
+    try {
+      const brandsResponse = await fetch('/api/brands')
+      const brandsData = await brandsResponse.json()
+      const brand = brandsData.brands?.[0]
+
+      if (!brand) {
+        setMonitoringStatus('✗ No brand found. Please add a brand first.')
+        setTimeout(() => setMonitoringStatus(null), 5000)
+        return
+      }
+
+      setMonitoring(true)
+      setMonitoringStatus('⏳ Running monitoring across all platforms...')
+
+      const response = await fetch('/api/monitor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandId: brand.id }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Monitoring failed')
+      }
+
+      const data = await response.json()
+      setMonitoringStatus(`✓ Monitoring complete! Found ${data.result.total_mentions} mentions with ${data.result.visibility_score}% visibility`)
+
+      // Refresh data
+      await fetchData()
+
+      setTimeout(() => setMonitoringStatus(null), 10000)
+    } catch (error) {
+      console.error('Monitoring error:', error)
+      setMonitoringStatus('✗ Monitoring failed. Please try again.')
+      setTimeout(() => setMonitoringStatus(null), 5000)
+    } finally {
+      setMonitoring(false)
     }
   }
 
@@ -176,13 +241,54 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            {primaryBrand && (
+              <Badge variant="outline" className="text-sm">
+                {primaryBrand.is_primary && (
+                  <Star className="h-3 w-3 fill-orange-500 text-orange-500 mr-1" />
+                )}
+                {primaryBrand.name}
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">
             Overview of your AI search visibility
           </p>
         </div>
-        <Button onClick={() => router.push('/dashboard/brands')}>Run Monitoring Now</Button>
+        <Button onClick={runMonitoring} disabled={monitoring} size="lg" className="gap-2">
+          {monitoring ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Running...
+            </>
+          ) : (
+            <>
+              <Play className="h-4 w-4" />
+              Run Monitoring Now
+            </>
+          )}
+        </Button>
       </div>
+
+      {/* Status Banner */}
+      {monitoringStatus && (
+        <Card className={`border-2 ${
+          monitoringStatus.startsWith('✓') ? 'border-green-500 bg-green-50' :
+          monitoringStatus.startsWith('✗') ? 'border-red-500 bg-red-50' :
+          'border-blue-500 bg-blue-50'
+        }`}>
+          <CardContent className="pt-4 pb-4">
+            <p className={`text-sm font-medium ${
+              monitoringStatus.startsWith('✓') ? 'text-green-900' :
+              monitoringStatus.startsWith('✗') ? 'text-red-900' :
+              'text-blue-900'
+            }`}>
+              {monitoringStatus}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Key Metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
