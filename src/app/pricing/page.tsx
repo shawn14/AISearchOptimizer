@@ -295,31 +295,34 @@ export default function PricingPage() {
                 <span className="font-semibold text-gray-900">RevIntel</span>
               </div>
               <p className="text-sm text-gray-600">
-                The AI search visibility platform for modern brands
+                The AI Search Intelligence Platform for modern brands
               </p>
             </div>
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><Link href="/#features" className="hover:text-gray-900">Features</Link></li>
+                <li><Link href="/features" className="hover:text-gray-900">Features</Link></li>
                 <li><Link href="/pricing" className="hover:text-gray-900">Pricing</Link></li>
                 <li><Link href="/dashboard" className="hover:text-gray-900">Dashboard</Link></li>
+                <li><Link href="/integrations" className="hover:text-gray-900">Integrations</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Company</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><Link href="#" className="hover:text-gray-900">About</Link></li>
-                <li><Link href="#" className="hover:text-gray-900">Blog</Link></li>
-                <li><Link href="#" className="hover:text-gray-900">Careers</Link></li>
+                <li><Link href="/about" className="hover:text-gray-900">About</Link></li>
+                <li><Link href="/blog" className="hover:text-gray-900">Blog</Link></li>
+                <li><Link href="/careers" className="hover:text-gray-900">Careers</Link></li>
+                <li><Link href="/press" className="hover:text-gray-900">Press Kit</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-gray-900 mb-4">Resources</h4>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li><Link href="#" className="hover:text-gray-900">Documentation</Link></li>
-                <li><Link href="#" className="hover:text-gray-900">Support</Link></li>
-                <li><Link href="#" className="hover:text-gray-900">Contact</Link></li>
+                <li><Link href="/documentation" className="hover:text-gray-900">Documentation</Link></li>
+                <li><Link href="/help" className="hover:text-gray-900">Help Center</Link></li>
+                <li><Link href="/api-reference" className="hover:text-gray-900">API Reference</Link></li>
+                <li><Link href="/contact" className="hover:text-gray-900">Contact</Link></li>
               </ul>
             </div>
           </div>

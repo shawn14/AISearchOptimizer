@@ -234,36 +234,36 @@ export default function Home() {
             <div>
               <h4 className="font-semibold text-gray-900 mb-4 text-sm">Product</h4>
               <ul className="space-y-3 text-sm text-gray-600">
-                <li><Link href="#features" className="hover:text-gray-900 transition">Features</Link></li>
+                <li><Link href="/features" className="hover:text-gray-900 transition">Features</Link></li>
                 <li><Link href="/pricing" className="hover:text-gray-900 transition">Pricing</Link></li>
                 <li><Link href="/dashboard" className="hover:text-gray-900 transition">Dashboard</Link></li>
-                <li><Link href="#" className="hover:text-gray-900 transition">Integrations</Link></li>
+                <li><Link href="/integrations" className="hover:text-gray-900 transition">Integrations</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-gray-900 mb-4 text-sm">Company</h4>
               <ul className="space-y-3 text-sm text-gray-600">
-                <li><Link href="#" className="hover:text-gray-900 transition">About</Link></li>
-                <li><Link href="#" className="hover:text-gray-900 transition">Blog</Link></li>
-                <li><Link href="#" className="hover:text-gray-900 transition">Careers</Link></li>
-                <li><Link href="#" className="hover:text-gray-900 transition">Press Kit</Link></li>
+                <li><Link href="/about" className="hover:text-gray-900 transition">About</Link></li>
+                <li><Link href="/blog" className="hover:text-gray-900 transition">Blog</Link></li>
+                <li><Link href="/careers" className="hover:text-gray-900 transition">Careers</Link></li>
+                <li><Link href="/press" className="hover:text-gray-900 transition">Press Kit</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-semibold text-gray-900 mb-4 text-sm">Resources</h4>
               <ul className="space-y-3 text-sm text-gray-600">
-                <li><Link href="#" className="hover:text-gray-900 transition">Documentation</Link></li>
-                <li><Link href="#" className="hover:text-gray-900 transition">Help Center</Link></li>
-                <li><Link href="#" className="hover:text-gray-900 transition">API Reference</Link></li>
-                <li><Link href="#" className="hover:text-gray-900 transition">Contact</Link></li>
+                <li><Link href="/documentation" className="hover:text-gray-900 transition">Documentation</Link></li>
+                <li><Link href="/help" className="hover:text-gray-900 transition">Help Center</Link></li>
+                <li><Link href="/api-reference" className="hover:text-gray-900 transition">API Reference</Link></li>
+                <li><Link href="/contact" className="hover:text-gray-900 transition">Contact</Link></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-gray-500">© 2025 RevIntel. All rights reserved.</p>
             <div className="flex gap-6 text-sm text-gray-500">
-              <Link href="#" className="hover:text-gray-900 transition">Privacy Policy</Link>
-              <Link href="#" className="hover:text-gray-900 transition">Terms of Service</Link>
+              <Link href="/privacy" className="hover:text-gray-900 transition">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-gray-900 transition">Terms of Service</Link>
               <Link href="#" className="hover:text-gray-900 transition">Cookie Settings</Link>
             </div>
           </div>
