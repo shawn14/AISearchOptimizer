@@ -1,4 +1,5 @@
 import { DashboardNav } from "@/components/dashboard/nav"
+import { ChatWidget } from "@/components/dashboard/chat-widget"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -29,6 +30,9 @@ export default function DashboardLayout({
             {children}
           </div>
         </main>
+
+        {/* Floating Chat Widget */}
+        <ChatWidget />
       </div>
     </div>
   )
