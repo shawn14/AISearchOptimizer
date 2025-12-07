@@ -1,12 +1,13 @@
-import { Metadata } from "next"
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-
-export const metadata: Metadata = {
-  title: "Careers - RevIntel",
-  description: "Join our team and help shape the future of AI search",
-}
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Loader2 } from "lucide-react"
 
 const openings = [
   {
@@ -30,6 +31,57 @@ const openings = [
 ]
 
 export default function CareersPage() {
+  const [selectedJob, setSelectedJob] = useState<string | null>(null)
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    resume: "",
+    coverLetter: "",
+  })
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch("/api/careers/apply", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          position: selectedJob,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to submit application")
+      }
+
+      setSuccess(true)
+      setFormData({
+        name: "",
+        email: "",
+        phone: "",
+        resume: "",
+        coverLetter: "",
+      })
+      setSelectedJob(null)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -90,8 +142,8 @@ export default function CareersPage() {
                           {job.location} • {job.type}
                         </CardDescription>
                       </div>
-                      <Button asChild>
-                        <Link href="/contact">Apply</Link>
+                      <Button onClick={() => setSelectedJob(job.title)}>
+                        Apply
                       </Button>
                     </div>
                   </CardHeader>
@@ -105,6 +157,106 @@ export default function CareersPage() {
         </div>
       </section>
 
+      {/* Application Form Modal */}
+      {selectedJob && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <CardTitle>Apply for {selectedJob}</CardTitle>
+              <CardDescription>
+                Fill out the form below to submit your application
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {success ? (
+                <div className="text-center py-8">
+                  <h3 className="text-2xl font-bold text-green-600 mb-2">Application Submitted!</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Thank you for applying. We'll review your application and get back to you soon.
+                  </p>
+                  <Button onClick={() => setSuccess(false)}>Close</Button>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name *</Label>
+                    <Input
+                      id="name"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="resume">Resume URL *</Label>
+                    <Input
+                      id="resume"
+                      type="url"
+                      required
+                      placeholder="https://..."
+                      value={formData.resume}
+                      onChange={(e) => setFormData({ ...formData, resume: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Please provide a link to your resume (Google Drive, Dropbox, LinkedIn, etc.)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="coverLetter">Cover Letter</Label>
+                    <Textarea
+                      id="coverLetter"
+                      rows={6}
+                      placeholder="Tell us why you're interested in this position..."
+                      value={formData.coverLetter}
+                      onChange={(e) => setFormData({ ...formData, coverLetter: e.target.value })}
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="text-sm text-red-600 bg-red-50 p-3 rounded">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <Button type="submit" disabled={loading}>
+                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {loading ? "Submitting..." : "Submit Application"}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => setSelectedJob(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* CTA */}
       <section className="py-16">
         <div className="container mx-auto px-4 text-center">
@@ -112,8 +264,8 @@ export default function CareersPage() {
           <p className="text-xl text-muted-foreground mb-8">
             We're always looking for talented people. Send us your resume!
           </p>
-          <Button asChild size="lg">
-            <Link href="/contact">Get in Touch</Link>
+          <Button size="lg" onClick={() => setSelectedJob("General Application")}>
+            Get in Touch
           </Button>
         </div>
       </section>
