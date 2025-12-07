@@ -93,7 +93,7 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
       handleSubmit(e)
@@ -132,10 +132,12 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 w-96 h-[600px] shadow-2xl z-50 flex flex-col">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b">
-        <CardTitle className="text-base flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-primary" />
+    <Card className="fixed bottom-6 right-6 w-[420px] h-[650px] shadow-2xl z-50 flex flex-col border-2">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 pt-4 px-4 border-b bg-card">
+        <CardTitle className="text-lg flex items-center gap-2 font-semibold">
+          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <MessageSquare className="h-4 w-4 text-primary" />
+          </div>
           Chat Assistant
         </CardTitle>
         <div className="flex gap-1">
@@ -143,7 +145,7 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
             variant="ghost"
             size="sm"
             onClick={() => setIsMinimized(true)}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 hover:bg-muted"
           >
             <Minimize2 className="h-4 w-4" />
           </Button>
@@ -151,47 +153,50 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
             variant="ghost"
             size="sm"
             onClick={() => setIsOpen(false)}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 hover:bg-muted"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
+      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden bg-background">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.map((message, i) => (
             <div
               key={i}
               className={cn(
-                "flex",
-                message.role === "user" ? "justify-end" : "justify-start"
+                "flex flex-col",
+                message.role === "user" ? "items-end" : "items-start"
               )}
             >
               <div
                 className={cn(
-                  "max-w-[80%] rounded-lg p-3 text-sm",
+                  "max-w-[85%] rounded-2xl px-4 py-3",
                   message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
+                    ? "bg-primary text-primary-foreground rounded-br-md"
+                    : "bg-muted text-foreground rounded-bl-md"
                 )}
               >
-                <p className="whitespace-pre-wrap">{message.content}</p>
-                <p className="text-xs opacity-70 mt-1">
-                  {message.timestamp.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit"
-                  })}
-                </p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
               </div>
+              <p className={cn(
+                "text-xs text-muted-foreground mt-1 px-1",
+                message.role === "user" ? "text-right" : "text-left"
+              )}>
+                {message.timestamp.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit"
+                })}
+              </p>
             </div>
           ))}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-muted rounded-lg p-3 text-sm flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Thinking...</span>
+              <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm">Thinking...</span>
               </div>
             </div>
           )}
@@ -199,27 +204,31 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSubmit} className="p-4 border-t">
-          <div className="flex gap-2">
+        <form onSubmit={handleSubmit} className="p-4 border-t bg-card">
+          <div className="flex gap-2 items-end">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="Ask me anything about your data..."
-              className="min-h-[60px] max-h-[120px] resize-none"
+              className="min-h-[56px] max-h-[120px] resize-none flex-1 text-sm"
               disabled={isLoading}
             />
             <Button
               type="submit"
               size="sm"
               disabled={!input.trim() || isLoading}
-              className="px-3"
+              className="h-[56px] w-[56px] flex-shrink-0"
             >
-              <Send className="h-4 w-4" />
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Press Enter to send, Shift+Enter for new line
+          <p className="text-xs text-muted-foreground mt-2 px-1">
+            Press Enter to send • Shift+Enter for new line
           </p>
         </form>
       </CardContent>
