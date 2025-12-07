@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     // Fetch the page
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AISearchOptimizer/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; RevIntel/1.0)',
       },
     })
 

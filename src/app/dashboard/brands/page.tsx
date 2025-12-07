@@ -478,14 +478,14 @@ export default function BrandsPage() {
           <div className="space-y-4">
             {[
               {
-                brand: "AISearchOptimizer",
+                brand: "RevIntel",
                 time: "2 hours ago",
                 platforms: ["ChatGPT", "Claude", "Perplexity", "Gemini"],
                 mentions: 12,
                 status: "completed",
               },
               {
-                brand: "AISearchOptimizer",
+                brand: "RevIntel",
                 time: "8 hours ago",
                 platforms: ["ChatGPT", "Claude", "Perplexity"],
                 mentions: 10,

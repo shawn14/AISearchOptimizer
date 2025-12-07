@@ -31,7 +31,7 @@ export default function PricingPage() {
           <div className="flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
               <Sparkles className="h-6 w-6 text-gray-900" />
-              <span className="font-semibold text-lg text-gray-900">AISearchOptimizer</span>
+              <span className="font-semibold text-lg text-gray-900">RevIntel</span>
             </Link>
             <div className="flex items-center gap-6">
               <Link href="/#features" className="text-sm text-gray-600 hover:text-gray-900">Features</Link>
@@ -292,7 +292,7 @@ export default function PricingPage() {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="h-5 w-5 text-gray-900" />
-                <span className="font-semibold text-gray-900">AISearchOptimizer</span>
+                <span className="font-semibold text-gray-900">RevIntel</span>
               </div>
               <p className="text-sm text-gray-600">
                 The AI search visibility platform for modern brands
@@ -324,7 +324,7 @@ export default function PricingPage() {
             </div>
           </div>
           <div className="border-t border-gray-100 pt-8 text-center text-sm text-gray-600">
-            <p>© 2025 AISearchOptimizer. All rights reserved.</p>
+            <p>© 2025 RevIntel. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react"
 
 export default function DemoPage() {
   const [query, setQuery] = useState("What are the best AI search optimization tools?")
-  const [brandName, setbrandName] = useState("AISearchOptimizer")
+  const [brandName, setbrandName] = useState("RevIntel")
   const [brandDomain, setBrandDomain] = useState("aisearchoptimizer.com")
   const [loading, setLoading] = useState(false)
   const [results, setResults] = useState<any>(null)

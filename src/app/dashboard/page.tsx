@@ -224,7 +224,7 @@ export default function DashboardPage() {
         <Card className="border-dashed">
           <CardHeader className="flex flex-col items-center justify-center text-center py-16">
             <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
-            <CardTitle>Get started with AISearchOptimizer</CardTitle>
+            <CardTitle>Get started with RevIntel</CardTitle>
             <CardDescription className="mb-6 max-w-md">
               Add your brand and start monitoring your visibility across AI platforms, or audit your pages to optimize for AI search engines.
             </CardDescription>
