@@ -33,11 +33,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Set the selected brand as primary
-    const updatedBrand = await updateBrand(brandId, { is_primary: true })
+    await updateBrand(brandId, { is_primary: true })
 
     return NextResponse.json({
-      success: true,
-      brand: updatedBrand
+      success: true
     })
   } catch (error: any) {
     console.error('Error setting primary brand:', error)

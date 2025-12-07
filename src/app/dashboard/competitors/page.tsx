@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -14,7 +15,9 @@ import {
   Eye,
   MessageSquare,
   Sparkles,
-  Star
+  Star,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react"
 import {
   BarChart,
@@ -27,11 +30,18 @@ import {
   ResponsiveContainer
 } from 'recharts'
 
+interface MentionDetail {
+  query: string
+  platform: string
+  context: string
+}
+
 interface CompetitorMention {
   brand: string
   mentions: number
   queries: string[]
   platforms: string[]
+  details: MentionDetail[]
 }
 
 interface Brand {
@@ -42,6 +52,7 @@ interface Brand {
 }
 
 export default function CompetitorsPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [competitorMentions, setCompetitorMentions] = useState<CompetitorMention[]>([])
   const [brands, setBrands] = useState<Brand[]>([])
@@ -107,21 +118,32 @@ export default function CompetitorsPage() {
 
       setTotalQueries(latestRun.queries_tested)
 
-      // Extract all brand mentions from responses
+      // Extract all brand mentions from responses WHERE YOUR BRAND WAS ALSO MENTIONED
       const brandMentions = new Map<string, CompetitorMention>()
 
       latestRun.individual_results.forEach((result: any) => {
-        const text = result.response_text?.toLowerCase() || ''
+        const text = result.response_text || ''
 
-        // Common competitor/brand patterns
-        const brandPatterns = [
-          /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g // Brand names (capitalized words)
-        ]
+        // First, check if this response mentions YOUR brand
+        const myBrandRegex = new RegExp(`\\b${brand.name}\\b`, 'gi')
+        const myBrandMentioned = myBrandRegex.test(text)
 
-        // Extract potential brand names (excluding common words)
-        const commonWords = new Set(['the', 'and', 'for', 'with', 'this', 'that', 'from', 'are', 'have', 'can', 'will', 'some', 'other', 'their', 'what', 'here'])
+        // Only process this response if YOUR brand was mentioned
+        if (!myBrandMentioned && !result.mentioned) {
+          return // Skip this response
+        }
 
-        const words = result.response_text?.split(/\s+/) || []
+        // Extract potential brand names (excluding common words and generic financial terms)
+        const commonWords = new Set([
+          'the', 'and', 'for', 'with', 'this', 'that', 'from', 'are', 'have', 'can', 'will', 'some', 'other', 'their', 'what', 'here',
+          'financial', 'finance', 'investment', 'bank', 'banking', 'services', 'credit', 'management', 'personal', 'business',
+          'offers', 'its', 'best', 'america', 'new', 'well', 'also', 'these', 'such', 'more', 'most', 'many', 'all', 'each',
+          'both', 'your', 'you', 'they', 'them', 'their', 'when', 'which', 'who', 'how', 'where', 'why', 'whether',
+          'include', 'includes', 'including', 'such', 'example', 'examples', 'based', 'provide', 'provides', 'offering',
+          'known', 'leading', 'top', 'major', 'largest', 'one', 'two', 'three', 'first', 'second', 'third'
+        ])
+
+        const words = text.split(/\s+/) || []
         words.forEach((word: string) => {
           const cleaned = word.replace(/[^a-zA-Z]/g, '')
           if (cleaned.length > 2 && /^[A-Z]/.test(cleaned) && !commonWords.has(cleaned.toLowerCase())) {
@@ -132,7 +154,8 @@ export default function CompetitorsPage() {
                 brand: cleaned,
                 mentions: 0,
                 queries: [],
-                platforms: []
+                platforms: [],
+                details: []
               })
             }
 
@@ -144,6 +167,19 @@ export default function CompetitorsPage() {
             }
             if (!mention.platforms.includes(result.platform)) {
               mention.platforms.push(result.platform)
+            }
+
+            // Add detail entry for this mention
+            const existingDetail = mention.details.find(d =>
+              d.query === result.query && d.platform === result.platform
+            )
+
+            if (!existingDetail) {
+              mention.details.push({
+                query: result.query,
+                platform: result.platform,
+                context: result.context || text || ''
+              })
             }
           }
         })
@@ -308,7 +344,11 @@ export default function CompetitorsPage() {
           {competitorMentions.length > 0 ? (
             <div className="space-y-3">
               {competitorMentions.map((comp, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => router.push(`/dashboard/competitors/${encodeURIComponent(comp.brand)}`)}
+                >
                   <div className="flex items-center gap-4">
                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm">
                       {idx + 1}
@@ -322,6 +362,7 @@ export default function CompetitorsPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <Badge variant="secondary">{comp.mentions} mentions</Badge>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
               ))}

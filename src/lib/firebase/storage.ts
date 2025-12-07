@@ -137,6 +137,7 @@ export async function getBrand(id: string): Promise<Brand | null> {
     website_url: data.website_url,
     industry: data.industry || null,
     description: data.description || null,
+    is_primary: data.is_primary || false,
     created_at: data.created_at.toDate(),
     updated_at: data.updated_at.toDate(),
   }
@@ -155,6 +156,7 @@ export async function getAllBrands(): Promise<Brand[]> {
       website_url: data.website_url,
       industry: data.industry || null,
       description: data.description || null,
+      is_primary: data.is_primary || false,
       created_at: data.created_at.toDate(),
       updated_at: data.updated_at.toDate(),
     }
@@ -513,4 +515,105 @@ export async function updateAllPromptPerformances(): Promise<void> {
   )
 
   await Promise.all(updates)
+}
+
+/**
+ * Knowledge Articles Management
+ */
+
+export interface KnowledgeArticle {
+  id: string
+  brand_id?: string | null
+  title: string
+  type: string // About, Product, Pricing, Case Study, Blog, etc.
+  content: string
+  url: string
+  category: string
+  citation_count?: number
+  last_cited_at?: Date | null
+  created_at: Date
+  updated_at: Date
+}
+
+export async function createKnowledgeArticle(article: Omit<KnowledgeArticle, 'id' | 'created_at' | 'updated_at'>): Promise<KnowledgeArticle> {
+  const ref = db.collection(COLLECTIONS.KNOWLEDGE_ARTICLES).doc()
+  const now = Timestamp.now()
+
+  const newArticle = {
+    ...article,
+    citation_count: 0,
+    created_at: now,
+    updated_at: now,
+  }
+
+  await ref.set(newArticle)
+
+  return {
+    id: ref.id,
+    ...article,
+    citation_count: 0,
+    created_at: now.toDate(),
+    updated_at: now.toDate(),
+  }
+}
+
+export async function getKnowledgeArticle(id: string): Promise<KnowledgeArticle | null> {
+  const doc = await db.collection(COLLECTIONS.KNOWLEDGE_ARTICLES).doc(id).get()
+
+  if (!doc.exists) {
+    return null
+  }
+
+  const data = doc.data()!
+  return {
+    id: doc.id,
+    brand_id: data.brand_id || null,
+    title: data.title,
+    type: data.type,
+    content: data.content,
+    url: data.url,
+    category: data.category,
+    citation_count: data.citation_count || 0,
+    last_cited_at: data.last_cited_at ? data.last_cited_at.toDate() : null,
+    created_at: data.created_at.toDate(),
+    updated_at: data.updated_at.toDate(),
+  }
+}
+
+export async function getAllKnowledgeArticles(brandId?: string): Promise<KnowledgeArticle[]> {
+  let query = db.collection(COLLECTIONS.KNOWLEDGE_ARTICLES).orderBy('created_at', 'desc')
+
+  if (brandId) {
+    query = query.where('brand_id', '==', brandId) as any
+  }
+
+  const snapshot = await query.get()
+
+  return snapshot.docs.map(doc => {
+    const data = doc.data()
+    return {
+      id: doc.id,
+      brand_id: data.brand_id || null,
+      title: data.title,
+      type: data.type,
+      content: data.content,
+      url: data.url,
+      category: data.category,
+      citation_count: data.citation_count || 0,
+      last_cited_at: data.last_cited_at ? data.last_cited_at.toDate() : null,
+      created_at: data.created_at.toDate(),
+      updated_at: data.updated_at.toDate(),
+    }
+  })
+}
+
+export async function updateKnowledgeArticle(id: string, updates: Partial<Omit<KnowledgeArticle, 'id' | 'created_at' | 'updated_at'>>): Promise<void> {
+  await db.collection(COLLECTIONS.KNOWLEDGE_ARTICLES).doc(id).update({
+    ...updates,
+    updated_at: Timestamp.now(),
+  })
+}
+
+export async function deleteKnowledgeArticle(id: string): Promise<void> {
+  await db.collection(COLLECTIONS.KNOWLEDGE_ARTICLES).doc(id).delete()
 }
