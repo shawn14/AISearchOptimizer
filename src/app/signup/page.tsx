@@ -4,9 +4,10 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff, Layers } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
+import { SiteHeader } from "@/components/site-header"
 
 export default function SignUpPage() {
   const router = useRouter()
@@ -49,22 +50,22 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="w-full max-w-2xl">
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-6">
-            <div className="h-14 w-14 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-primary-foreground font-bold text-2xl">R</span>
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+      <SiteHeader />
+
+      <div className="flex items-center justify-center p-4 pt-20">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-6">
+              <div className="h-14 w-14 bg-gray-900 rounded-md flex items-center justify-center">
+                <span className="text-white font-bold text-2xl">R</span>
+              </div>
             </div>
+            <h1 className="text-4xl font-bold mb-2 text-gray-900">Create your account</h1>
+            <p className="text-gray-600">
+              Start optimizing your AI search presence today
+            </p>
           </div>
-          <h1 className="text-4xl font-bold mb-2">RevIntel</h1>
-          <p className="text-muted-foreground text-lg mb-6">
-            AI Search Intelligence Platform
-          </p>
-          <p className="text-muted-foreground">
-            Join thousands of brands optimizing for AI search engines.
-          </p>
-        </div>
 
         <Card className="border-0 shadow-lg">
           <CardContent className="pt-6">
@@ -134,7 +135,7 @@ export default function SignUpPage() {
 
               <Button
                 type="submit"
-                className="w-full h-12 text-base"
+                className="w-full h-12 text-base bg-gray-900 hover:bg-gray-800 text-white"
                 disabled={loading}
               >
                 {loading ? "Creating Account..." : "Create Account"}
@@ -154,12 +155,13 @@ export default function SignUpPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center mt-6 text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/signin" className="text-primary hover:underline font-medium">
-            Sign in
-          </Link>
-        </p>
+          <p className="text-center mt-6 text-gray-600">
+            Already have an account?{" "}
+            <Link href="/signin" className="text-gray-900 hover:underline font-medium">
+              Sign in
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   )
