@@ -45,6 +45,7 @@ export default function DashboardPage() {
   const [monitoring, setMonitoring] = useState(false)
   const [monitoringStatus, setMonitoringStatus] = useState<string | null>(null)
   const [primaryBrand, setPrimaryBrand] = useState<Brand | null>(null)
+  const [showAllBrands, setShowAllBrands] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -191,7 +192,7 @@ export default function DashboardPage() {
     : 0
 
   // Get recent mentions from individual_results
-  const recentMentions = monitoringRuns
+  const allMentions = monitoringRuns
     .flatMap(run =>
       (run.individual_results || [])
         .filter((r: any) => r.mentioned)
@@ -203,7 +204,12 @@ export default function DashboardPage() {
           brand: run.brand_name
         }))
     )
-    .slice(0, 5)
+
+  // Filter mentions based on showAllBrands toggle
+  const recentMentions = (showAllBrands
+    ? allMentions
+    : allMentions.filter(m => m.brand === primaryBrand?.name)
+  ).slice(0, 5)
 
   // No data state
   if (monitoringRuns.length === 0 && audits.length === 0) {
@@ -668,11 +674,31 @@ export default function DashboardPage() {
       )}
 
       {/* Recent Activity */}
-      {recentMentions.length > 0 && (
+      {allMentions.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Recent Brand Mentions</CardTitle>
-            <CardDescription>Latest mentions across AI platforms</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Recent Brand Mentions</CardTitle>
+                <CardDescription>Latest mentions across AI platforms</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={!showAllBrands ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowAllBrands(false)}
+                >
+                  My Brand
+                </Button>
+                <Button
+                  variant={showAllBrands ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowAllBrands(true)}
+                >
+                  All Brands
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
