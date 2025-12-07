@@ -1,6 +1,26 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check, Sparkles, ArrowRight } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Pricing - RevIntel AI Search Intelligence",
+  description: "Flexible pricing plans for RevIntel's AI Search Intelligence Platform. Monitor your brand across ChatGPT, Claude, Perplexity, and Gemini. Start free, scale as you grow.",
+  keywords: [
+    "AI search monitoring pricing",
+    "AEO platform pricing",
+    "brand visibility tracking cost",
+    "AI citation analysis pricing",
+    "ChatGPT monitoring plans",
+    "answer engine optimization pricing"
+  ],
+  openGraph: {
+    title: "RevIntel Pricing - AI Search Intelligence Plans",
+    description: "Start monitoring your brand's AI search visibility for free. Flexible plans to fit your business needs.",
+    type: "website",
+    url: "https://revintel.ai/pricing"
+  }
+};
 
 export default function PricingPage() {
   return (

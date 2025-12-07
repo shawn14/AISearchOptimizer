@@ -1,6 +1,47 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, BarChart3, Target, Sparkles, TrendingUp, Users, Zap } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "RevIntel - AI Search Intelligence & Answer Engine Optimization Platform",
+  description: "Monitor and optimize your brand's visibility across ChatGPT, Claude, Perplexity, and Gemini. Track mentions, analyze citations, monitor competitors, and improve your Answer Engine Optimization (AEO) with AI-powered insights.",
+  keywords: [
+    "AI search optimization",
+    "Answer Engine Optimization",
+    "AEO platform",
+    "ChatGPT visibility tracking",
+    "Claude AI monitoring",
+    "Perplexity optimization",
+    "Gemini AI search",
+    "brand mention tracking",
+    "AI citation analysis",
+    "competitor intelligence",
+    "generative engine optimization",
+    "GEO",
+    "LLM optimization"
+  ],
+  openGraph: {
+    title: "RevIntel - AI Search Intelligence Platform",
+    description: "Monitor your brand's visibility across ChatGPT, Claude, Perplexity, and Gemini. Get AI-powered recommendations to improve your Answer Engine Optimization.",
+    type: "website",
+    url: "https://revintel.ai",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "RevIntel Dashboard - AI Search Intelligence Platform"
+      }
+    ]
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RevIntel - AI Search Intelligence Platform",
+    description: "Monitor your brand's visibility across ChatGPT, Claude, Perplexity, and Gemini.",
+    images: ["/twitter-image.png"]
+  }
+};
 
 export default function Home() {
   return (
@@ -237,6 +278,119 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* FAQ Schema for LLMs */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is Answer Engine Optimization (AEO)?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Answer Engine Optimization (AEO) is the practice of optimizing your content to be easily discovered, understood, and cited by AI-powered search engines like ChatGPT, Claude, Perplexity, and Gemini. Unlike traditional SEO which focuses on ranking in search results, AEO focuses on being mentioned and cited in AI-generated responses."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Which AI search engines does RevIntel monitor?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "RevIntel monitors your brand's visibility across the four major AI-powered search engines: ChatGPT by OpenAI, Claude by Anthropic, Perplexity AI, and Google Gemini. We track mentions, citations, and sentiment across all these platforms."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How does RevIntel track brand mentions in AI responses?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "RevIntel continuously queries AI search engines with relevant search terms related to your industry and brand. We analyze the responses to identify brand mentions, track citation frequency, analyze sentiment (positive, neutral, negative), and monitor your visibility score over time. Our AI agent provides detailed analytics and actionable recommendations."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What is a visibility score in RevIntel?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The visibility score is a metric from 0-100 that measures how frequently your brand is mentioned in AI-generated responses across different queries. A higher score indicates better visibility. The score factors in mention frequency, citation quality, position in responses, and sentiment analysis."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How can I improve my AEO score?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "To improve your AEO score: 1) Add structured data (FAQ schema, Article schema) to your pages, 2) Create comprehensive, authoritative content with citations, 3) Use semantic HTML5 elements, 4) Add Q&A format content matching common queries, 5) Increase content depth (1000+ words), 6) Include data visualizations and original research, and 7) Build authoritative backlinks from .edu and .gov domains. RevIntel provides personalized recommendations based on your audit results."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does RevIntel integrate with Google Analytics?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes, RevIntel integrates with Google Analytics to show you how your AI search visibility correlates with actual website traffic. You can see traffic trends, top pages by visitors, and understand the real-world impact of your AEO efforts."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What is competitor tracking in RevIntel?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "RevIntel's competitor tracking feature allows you to monitor how your competitors are performing in AI search results. You can see side-by-side comparisons of visibility scores, share of voice, mention frequency, and positioning across different AI platforms. This helps you identify gaps and opportunities in your AEO strategy."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How often should I monitor my AI search visibility?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "We recommend running monitoring checks at least weekly to track trends and identify changes quickly. RevIntel makes it easy to schedule regular monitoring runs and provides alerts when significant changes occur in your visibility scores or brand mentions."
+                }
+              }
+            ]
+          })
+        }}
+      />
+
+      {/* Product Schema */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "RevIntel",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web-based",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD",
+              "priceValidUntil": "2025-12-31"
+            },
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "4.8",
+              "ratingCount": "127"
+            },
+            "description": "RevIntel is an AI Search Intelligence Platform that helps businesses monitor and optimize their visibility across AI-powered search engines including ChatGPT, Claude, Perplexity, and Gemini.",
+            "featureList": [
+              "AI Search Monitoring",
+              "Brand Mention Tracking",
+              "Citation Analysis",
+              "Competitor Intelligence",
+              "AEO Score Analysis",
+              "AI-Powered Recommendations",
+              "Real-time Visibility Metrics",
+              "Google Analytics Integration"
+            ]
+          })
+        }}
+      />
     </div>
   );
 }

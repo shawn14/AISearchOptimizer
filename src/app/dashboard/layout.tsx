@@ -1,4 +1,14 @@
 import { DashboardNav } from "@/components/dashboard/nav"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+  description: "RevIntel dashboard - Monitor your brand's AI search visibility across ChatGPT, Claude, Perplexity, and Gemini",
+  robots: {
+    index: false,
+    follow: false
+  }
+}
 
 export default function DashboardLayout({
   children,
