@@ -209,7 +209,7 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyPress}
+              onKeyDown={handleKeyDown}
               placeholder="Ask me anything about your data..."
               className="min-h-[56px] max-h-[120px] resize-none flex-1 text-sm"
               disabled={isLoading}
