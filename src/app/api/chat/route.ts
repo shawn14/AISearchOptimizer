@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const dataContext = await fetchUserDataContext(context)
 
     // Build system prompt with data context
-    const systemPrompt = `You are RevIntel's AI assistant, helping users understand their AI search visibility and website analytics data.
+    const systemPrompt = `You are RevIntel's AI assistant, helping users understand their AI search visibility and Google Analytics data.
 
 Current Page Context: ${context || "dashboard"}
 
@@ -36,8 +36,10 @@ Your role:
 - Be concise and helpful
 - Use specific numbers from their data when relevant
 - Suggest next steps or optimizations
+- When asked about Google Analytics metrics (visitors, page views, sessions, etc.), reference the actual GA data provided above
+- If GA data shows traffic patterns, highlight significant trends
 
-Keep responses brief (2-3 sentences unless more detail is needed).`
+Keep responses brief (2-3 sentences unless more detail is needed). Always use the actual numbers from the data provided above.`
 
     // Build messages array
     const messages: any[] = [
@@ -127,9 +129,23 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
       ? Math.round(audits.reduce((sum: number, a: any) => sum + (a.content_score || 0), 0) / audits.length)
       : 0
 
-    // Check for GA data
-    const gaConnectionPath = path.join(process.cwd(), "data", "ga-connection.json")
-    const hasGA = fs.existsSync(gaConnectionPath)
+    // Fetch actual GA data
+    let gaData: any = null
+    let gaConnected = false
+
+    try {
+      // Call the analytics API to get actual data
+      const gaResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/analytics/data?startDate=30daysAgo&endDate=today`)
+      if (gaResponse.ok) {
+        const gaResult = await gaResponse.json()
+        if (gaResult.data) {
+          gaData = gaResult.data
+          gaConnected = true
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching GA data for chat:', error)
+    }
 
     // Build context string
     let contextStr = `AI Search Metrics:
@@ -141,9 +157,27 @@ Content Optimization:
 - Pages Audited: ${audits.length}
 - Average AEO Score: ${avgAEO}/100
 - Average Technical SEO: ${avgTechnical}/100
-- Average Content Quality: ${avgContent}/100
+- Average Content Quality: ${avgContent}/100`
 
-Google Analytics: ${hasGA ? "Connected" : "Not connected"}`
+    // Add GA data if available
+    if (gaConnected && gaData && gaData.metrics) {
+      contextStr += `\n\nGoogle Analytics (Last 30 Days):
+- Total Users: ${gaData.metrics.totalUsers?.toLocaleString() || 0}
+- Total Sessions: ${gaData.metrics.totalSessions?.toLocaleString() || 0}
+- Total Page Views: ${gaData.metrics.totalPageViews?.toLocaleString() || 0}
+- Pages per Session: ${gaData.metrics.totalSessions && gaData.metrics.totalPageViews ? (gaData.metrics.totalPageViews / gaData.metrics.totalSessions).toFixed(1) : 'N/A'}
+- Engagement Rate: ${gaData.metrics.engagementRate ? (gaData.metrics.engagementRate * 100).toFixed(1) + '%' : 'N/A'}`
+
+      // Add top pages if available
+      if (gaData.topPages && gaData.topPages.length > 0) {
+        contextStr += `\n\nTop 5 Pages by Traffic:`
+        gaData.topPages.slice(0, 5).forEach((page: any, idx: number) => {
+          contextStr += `\n${idx + 1}. ${page.page}: ${page.pageViews?.toLocaleString() || 0} views`
+        })
+      }
+    } else {
+      contextStr += `\n\nGoogle Analytics: Not connected or no data available`
+    }
 
     // Add recent monitoring results
     if (latestRuns.length > 0) {
