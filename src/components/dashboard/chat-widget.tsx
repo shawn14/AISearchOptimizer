@@ -23,7 +23,8 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -47,8 +48,8 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
 
   // Focus input when expanded
   useEffect(() => {
-    if (isExpanded && inputRef.current) {
-      inputRef.current.focus()
+    if (isExpanded && textareaRef.current) {
+      textareaRef.current.focus()
     }
   }, [isExpanded])
 
@@ -179,7 +180,7 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
             <form onSubmit={handleSubmit} className="max-w-3xl mx-auto w-full">
               <div className="flex gap-2 items-end">
                 <Textarea
-                  ref={inputRef}
+                  ref={textareaRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
