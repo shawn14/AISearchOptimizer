@@ -504,17 +504,14 @@ export default function DashboardPage() {
                   const Icon = platformConfig.icon
 
                   return (
-                    <div key={platform} className={`p-4 rounded-lg border ${platformConfig.bgColor}`}>
+                    <div key={platform} className="p-4 rounded-lg border">
                       <div className="flex items-center gap-2 mb-3">
-                        <Icon className={`h-5 w-5 ${platformConfig.color}`} />
-                        <span className="font-semibold text-sm">{platformConfig.name}</span>
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{platformConfig.name}</span>
                       </div>
-                      <div className="space-y-2">
-                        <div>
-                          <div className={`text-3xl font-bold ${platformConfig.color}`}>
-                            {stats.visibility}%
-                          </div>
-                          <p className="text-xs text-muted-foreground">Visibility</p>
+                      <div className="space-y-1">
+                        <div className="text-2xl font-semibold">
+                          {stats.visibility}%
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {stats.mentions} of {stats.total} queries
@@ -530,22 +527,17 @@ export default function DashboardPage() {
 
       {/* AI-Powered Insights */}
       {monitoringRuns.length > 0 && (
-        <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white">
+        <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Brain className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <CardTitle>AI Insights</CardTitle>
-                  <CardDescription>Strategic analysis of your LLM visibility powered by Claude Sonnet</CardDescription>
-                </div>
+              <div>
+                <CardTitle className="text-base font-semibold">AI Insights</CardTitle>
+                <CardDescription>Strategic analysis powered by Claude Sonnet</CardDescription>
               </div>
               <Button
                 onClick={generateInsights}
                 disabled={generatingInsights}
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 className="gap-2"
               >
@@ -557,7 +549,7 @@ export default function DashboardPage() {
                 ) : (
                   <>
                     <RefreshCw className="h-4 w-4" />
-                    Generate Insights
+                    Generate
                   </>
                 )}
               </Button>
@@ -565,43 +557,34 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {!insights && !generatingInsights && (
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="mb-2">Click "Generate Insights" to get AI-powered analysis of your dashboard metrics</p>
-                <p className="text-sm">Analyzes visibility, traffic, sentiment, and provides strategic recommendations</p>
+              <div className="text-sm text-muted-foreground">
+                Click "Generate" to analyze your dashboard metrics and get strategic recommendations
               </div>
             )}
 
             {generatingInsights && (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">Claude is analyzing your metrics...</p>
-                </div>
+              <div className="flex items-center gap-3 py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Analyzing metrics...</span>
               </div>
             )}
 
             {insights && !generatingInsights && (
               <div className="space-y-6">
                 {/* Executive Summary */}
-                <div className="p-4 bg-white rounded-lg border">
-                  <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4 text-purple-600" />
-                    Executive Summary
-                  </h3>
-                  <p className="text-sm leading-relaxed">{insights.summary}</p>
+                <div>
+                  <h3 className="text-sm font-medium mb-2">Summary</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{insights.summary}</p>
                 </div>
 
                 {/* Opportunities */}
                 {insights.opportunities && insights.opportunities.length > 0 && (
-                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2 text-green-900">
-                      <Lightbulb className="h-4 w-4" />
-                      Opportunities ({insights.opportunities.length})
-                    </h3>
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Opportunities</h3>
                     <ul className="space-y-2">
                       {insights.opportunities.map((opp: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-2 text-sm">
-                          <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                        <li key={idx} className="flex items-start gap-3 text-sm text-muted-foreground">
+                          <span className="text-muted-foreground/40">•</span>
                           <span>{opp}</span>
                         </li>
                       ))}
@@ -611,15 +594,12 @@ export default function DashboardPage() {
 
                 {/* Concerns */}
                 {insights.concerns && insights.concerns.length > 0 && (
-                  <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2 text-amber-900">
-                      <AlertTriangle className="h-4 w-4" />
-                      Areas of Concern ({insights.concerns.length})
-                    </h3>
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Areas of Concern</h3>
                     <ul className="space-y-2">
                       {insights.concerns.map((concern: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-2 text-sm">
-                          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <li key={idx} className="flex items-start gap-3 text-sm text-muted-foreground">
+                          <span className="text-muted-foreground/40">•</span>
                           <span>{concern}</span>
                         </li>
                       ))}
@@ -629,28 +609,17 @@ export default function DashboardPage() {
 
                 {/* Recommendations */}
                 {insights.recommendations && insights.recommendations.length > 0 && (
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2 text-blue-900">
-                      <Target className="h-4 w-4" />
-                      Strategic Recommendations ({insights.recommendations.length})
-                    </h3>
+                  <div>
+                    <h3 className="text-sm font-medium mb-3">Recommendations</h3>
                     <ul className="space-y-2">
                       {insights.recommendations.map((rec: string, idx: number) => (
-                        <li key={idx} className="flex items-start gap-2 text-sm">
-                          <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold mt-0.5">
-                            {idx + 1}
-                          </div>
+                        <li key={idx} className="flex items-start gap-3 text-sm text-muted-foreground">
+                          <span className="text-muted-foreground/60 font-medium">{idx + 1}.</span>
                           <span>{rec}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-                )}
-
-                {insights.cost && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    Analysis cost: ${insights.cost.toFixed(4)}
-                  </p>
                 )}
               </div>
             )}
@@ -967,53 +936,37 @@ export default function DashboardPage() {
             <div className="space-y-4">
               {recentMentions.map((mention, i) => {
                 const platformConfig = {
-                  chatgpt: { icon: MessageSquare, color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-200', name: 'ChatGPT' },
-                  claude: { icon: Brain, color: 'text-orange-600', bgColor: 'bg-orange-50', borderColor: 'border-orange-200', name: 'Claude' },
-                  perplexity: { icon: Search, color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', name: 'Perplexity' },
-                  gemini: { icon: Sparkles, color: 'text-purple-600', bgColor: 'bg-purple-50', borderColor: 'border-purple-200', name: 'Gemini' },
-                  grok: { icon: Zap, color: 'text-pink-600', bgColor: 'bg-pink-50', borderColor: 'border-pink-200', name: 'Grok' }
-                }[mention.platform.toLowerCase()] || { icon: Activity, color: 'text-gray-600', bgColor: 'bg-gray-50', borderColor: 'border-gray-200', name: mention.platform }
+                  chatgpt: { icon: MessageSquare, name: 'ChatGPT' },
+                  claude: { icon: Brain, name: 'Claude' },
+                  perplexity: { icon: Search, name: 'Perplexity' },
+                  gemini: { icon: Sparkles, name: 'Gemini' },
+                  grok: { icon: Zap, name: 'Grok' }
+                }[mention.platform.toLowerCase()] || { icon: Activity, name: mention.platform }
 
                 const PlatformIcon = platformConfig.icon
 
-                const sentimentConfig = {
-                  positive: { badge: 'default', text: 'Positive' },
-                  neutral: { badge: 'secondary', text: 'Neutral' },
-                  negative: { badge: 'destructive', text: 'Negative' }
-                }[mention.sentiment] || { badge: 'secondary', text: 'Unknown' }
-
                 return (
-                  <div key={i} className={`border rounded-lg p-4 ${platformConfig.borderColor} ${platformConfig.bgColor}`}>
+                  <div key={i} className="border-b pb-4 last:border-0">
                     <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg bg-white border ${platformConfig.borderColor}`}>
-                        <PlatformIcon className={`h-5 w-5 ${platformConfig.color}`} />
-                      </div>
+                      <PlatformIcon className="h-4 w-4 text-muted-foreground mt-1" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <Badge variant="outline" className="font-semibold">
-                            {platformConfig.name}
-                          </Badge>
-                          <Badge variant={sentimentConfig.badge as any}>
-                            {sentimentConfig.text}
-                          </Badge>
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="text-sm font-medium">{platformConfig.name}</span>
+                          <span className="text-xs text-muted-foreground">•</span>
+                          <span className="text-xs text-muted-foreground capitalize">{mention.sentiment}</span>
                           {mention.prominence_score > 0 && (
-                            <Badge variant="outline">
-                              Prominence: {mention.prominence_score}%
-                            </Badge>
+                            <>
+                              <span className="text-xs text-muted-foreground">•</span>
+                              <span className="text-xs text-muted-foreground">{mention.prominence_score}% prominence</span>
+                            </>
                           )}
                           <span className="text-xs text-muted-foreground ml-auto">
-                            {new Date(mention.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {new Date(mention.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                           </span>
                         </div>
-                        <div className="mb-2">
-                          <span className="text-xs text-muted-foreground uppercase tracking-wide">Query:</span>
-                          <p className="font-medium text-sm mt-0.5">{mention.query}</p>
-                        </div>
+                        <p className="text-sm mb-1">{mention.query}</p>
                         {mention.context && (
-                          <div className="bg-white/60 border rounded p-3 text-sm">
-                            <span className="text-xs text-muted-foreground uppercase tracking-wide block mb-1">Response excerpt:</span>
-                            <p className="text-muted-foreground italic leading-relaxed">...{mention.context}...</p>
-                          </div>
+                          <p className="text-sm text-muted-foreground italic">"{mention.context}"</p>
                         )}
                       </div>
                     </div>
