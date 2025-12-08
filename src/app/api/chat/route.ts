@@ -26,7 +26,35 @@ export async function POST(request: NextRequest) {
     const dataContext = await fetchUserDataContext(context)
 
     // Build system prompt with data context
-    const systemPrompt = `You are RevIntel's AI assistant, helping users understand their AI search visibility and Google Analytics data.
+    const isSettingsPage = context === "settings"
+
+    const systemPrompt = isSettingsPage
+      ? `You are RevIntel's AI assistant, helping users set up their Google Analytics integration.
+
+Current Page: Settings
+
+Your role:
+- Help users connect their Google Analytics account step-by-step
+- Provide direct URLs to Google Cloud Console and Google Analytics
+- Explain what a service account is and why it's needed
+- Guide users through finding their GA4 Property ID
+- Help troubleshoot connection issues
+- Be patient and provide clear, actionable instructions
+
+When users ask setup questions, provide:
+1. Clear step-by-step instructions
+2. Direct links to the exact pages they need (Google Cloud Console, GA Admin, etc.)
+3. What they should look for on each page
+4. Common troubleshooting tips
+
+Key URLs to reference:
+- Create Service Account: https://console.cloud.google.com/iam-admin/serviceaccounts
+- Google Analytics Admin: https://analytics.google.com/analytics/web/#/a/admin
+- GA Property Settings: Go to Admin → Property Settings in Google Analytics
+- Property Access: Go to Admin → Property Access Management in Google Analytics
+
+Keep responses helpful and conversational. If they're stuck, ask what step they're on.`
+      : `You are RevIntel's AI assistant, helping users understand their AI search visibility and Google Analytics data.
 
 Current Page Context: ${context || "dashboard"}
 
@@ -141,15 +169,15 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
     try {
       // Get user session to fetch their actual GA data
       const session = await getSession()
-      if (session?.user?.id) {
-        const gaCredentials = await getGACredentials(session.user.id)
+      if (session?.userId) {
+        const gaCredentials = await getGACredentials(session.userId)
 
         if (gaCredentials) {
           gaConnected = true
 
           // Fetch real GA data for the last 30 days
           const tempDir = os.tmpdir()
-          const tempCredentialsPath = path.join(tempDir, `ga-creds-${session.user.id}-${Date.now()}.json`)
+          const tempCredentialsPath = path.join(tempDir, `ga-creds-${session.userId}-${Date.now()}.json`)
 
           try {
             fs.writeFileSync(tempCredentialsPath, JSON.stringify(gaCredentials.credentials))

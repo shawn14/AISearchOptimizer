@@ -71,7 +71,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Save credentials to user's database record (encrypted)
-    await saveGACredentials(userId, propertyId, content)
+    await saveGACredentials(userId, {
+      propertyId,
+      credentials: jsonData,
+      lastSynced: new Date().toISOString()
+    })
 
     console.log(`Google Analytics credentials saved for user ${userId}`)
 

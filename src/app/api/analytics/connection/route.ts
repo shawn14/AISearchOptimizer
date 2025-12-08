@@ -1,20 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/session'
-import { saveGACredentials, getGACredentials, deleteGACredentials } from '@/lib/firebase/storage'
+import { saveGACredentials, getGACredentials, deleteGACredentials, getGAOAuthTokens } from '@/lib/firebase/storage'
+import { db, COLLECTIONS } from '@/lib/firebase/config'
 
 // GET - Check if GA is connected
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession()
 
-    if (!session?.user?.id) {
+    if (!session?.userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    const gaData = await getGACredentials(session.user.id)
+    // Check for OAuth tokens first (new method)
+    const oauthTokens = await getGAOAuthTokens(session.userId)
+
+    if (oauthTokens) {
+      // Get property ID and available properties from user doc
+      const userDoc = await db.collection(COLLECTIONS.USERS).doc(session.userId).get()
+      const userData = userDoc.data()
+
+      return NextResponse.json({
+        connected: true,
+        propertyId: userData?.ga_property_id || null,
+        lastSynced: userData?.ga_last_synced_at?.toDate().toISOString() || null,
+        availableProperties: userData?.ga_available_properties || []
+      })
+    }
+
+    // Fall back to service account method (old method)
+    const gaData = await getGACredentials(session.userId)
 
     if (!gaData) {
       return NextResponse.json({
@@ -42,7 +60,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getSession()
 
-    if (!session?.user?.id) {
+    if (!session?.userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -76,7 +94,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Save to Firebase
-    await saveGACredentials(session.user.id, {
+    await saveGACredentials(session.userId, {
       propertyId,
       credentials,
       lastSynced: new Date().toISOString()
@@ -101,14 +119,14 @@ export async function DELETE(request: NextRequest) {
   try {
     const session = await getSession()
 
-    if (!session?.user?.id) {
+    if (!session?.userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    await deleteGACredentials(session.user.id)
+    await deleteGACredentials(session.userId)
 
     return NextResponse.json({
       success: true,

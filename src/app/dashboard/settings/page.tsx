@@ -3,30 +3,58 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, Upload, Loader2, AlertCircle } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { CheckCircle, XCircle, Loader2, AlertCircle, ExternalLink } from "lucide-react"
 
 interface GAConnection {
   connected: boolean
   propertyId?: string
   lastSynced?: string
+  availableProperties?: Array<{ id: string; name: string }>
 }
 
 export default function SettingsPage() {
   const [gaConnection, setGaConnection] = useState<GAConnection>({ connected: false })
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const [connecting, setConnecting] = useState(false)
   const [testing, setTesting] = useState(false)
-  const [propertyId, setPropertyId] = useState("")
-  const [credentialsJson, setCredentialsJson] = useState("")
+  const [selectedProperty, setSelectedProperty] = useState<string>("")
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     checkGAConnection()
+
+    // Check for OAuth callback params
+    const params = new URLSearchParams(window.location.search)
+    const oauthStatus = params.get('oauth')
+    const oauthError = params.get('error')
+    const propertiesParam = params.get('properties')
+
+    if (oauthStatus === 'success') {
+      setSuccess("Connected to Google successfully! Please select your GA4 property below.")
+      checkGAConnection()
+
+      // Parse properties if available
+      if (propertiesParam) {
+        try {
+          const properties = JSON.parse(decodeURIComponent(propertiesParam))
+          setGaConnection(prev => ({ ...prev, availableProperties: properties }))
+        } catch (e) {
+          console.error('Failed to parse properties:', e)
+        }
+      }
+
+      // Clean URL
+      window.history.replaceState({}, '', '/dashboard/settings')
+    }
+
+    if (oauthError) {
+      setError("Failed to connect to Google Analytics. Please try again.")
+      // Clean URL
+      window.history.replaceState({}, '', '/dashboard/settings')
+    }
   }, [])
 
   async function checkGAConnection() {
@@ -36,7 +64,7 @@ export default function SettingsPage() {
         const data = await response.json()
         setGaConnection(data)
         if (data.propertyId) {
-          setPropertyId(data.propertyId)
+          setSelectedProperty(data.propertyId)
         }
       }
     } catch (error) {
@@ -46,52 +74,48 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleSaveGA() {
+  async function handleConnectGA() {
     setError(null)
     setSuccess(null)
-    setSaving(true)
+    setConnecting(true)
 
     try {
-      // Validate inputs
-      if (!propertyId || !credentialsJson) {
-        setError("Please provide both Property ID and Service Account credentials")
-        setSaving(false)
-        return
+      // Get OAuth URL from backend
+      const response = await fetch('/api/auth/google')
+      if (!response.ok) {
+        throw new Error('Failed to initiate OAuth flow')
       }
 
-      // Validate JSON
-      let credentials
-      try {
-        credentials = JSON.parse(credentialsJson)
-      } catch (e) {
-        setError("Invalid JSON format in credentials. Please paste valid JSON from your service account key file.")
-        setSaving(false)
-        return
-      }
+      const { url } = await response.json()
 
-      // Save to Firebase
-      const response = await fetch('/api/analytics/connection', {
+      // Redirect to Google OAuth
+      window.location.href = url
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to connect to Google")
+      setConnecting(false)
+    }
+  }
+
+  async function handleSelectProperty(propertyId: string) {
+    setSelectedProperty(propertyId)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const response = await fetch('/api/analytics/select-property', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          propertyId,
-          credentials
-        })
+        body: JSON.stringify({ propertyId })
       })
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to save GA connection')
+        throw new Error('Failed to save selected property')
       }
 
-      const data = await response.json()
-      setSuccess("Google Analytics connected successfully!")
-      setGaConnection({ connected: true, propertyId, lastSynced: new Date().toISOString() })
-      setCredentialsJson("") // Clear sensitive data from UI
+      setSuccess("Property selected successfully!")
+      setGaConnection(prev => ({ ...prev, propertyId, connected: true }))
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Failed to save GA connection")
-    } finally {
-      setSaving(false)
+      setError(error instanceof Error ? error.message : "Failed to select property")
     }
   }
 
@@ -102,14 +126,13 @@ export default function SettingsPage() {
 
     try {
       const response = await fetch('/api/analytics/test-connection')
+      const data = await response.json()
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || data.details || 'Connection test failed')
+        throw new Error(data.details || data.error || 'Connection test failed')
       }
 
-      const data = await response.json()
-      setSuccess(`Connection successful! Found ${data.metrics?.totalUsers || 0} users in the last 7 days.`)
+      setSuccess(`Connection successful! Found ${data.metrics.totalUsers} users and ${data.metrics.totalSessions} sessions in the last 7 days.`)
     } catch (error) {
       setError(error instanceof Error ? error.message : "Connection test failed")
     } finally {
@@ -118,7 +141,7 @@ export default function SettingsPage() {
   }
 
   async function handleDisconnect() {
-    if (!confirm('Are you sure you want to disconnect Google Analytics?')) {
+    if (!confirm("Are you sure you want to disconnect Google Analytics?")) {
       return
     }
 
@@ -127,21 +150,22 @@ export default function SettingsPage() {
         method: 'DELETE'
       })
 
-      if (response.ok) {
-        setGaConnection({ connected: false })
-        setPropertyId("")
-        setCredentialsJson("")
-        setSuccess("Google Analytics disconnected")
+      if (!response.ok) {
+        throw new Error('Failed to disconnect')
       }
+
+      setGaConnection({ connected: false })
+      setSelectedProperty("")
+      setSuccess("Google Analytics disconnected successfully")
     } catch (error) {
-      setError("Failed to disconnect Google Analytics")
+      setError(error instanceof Error ? error.message : "Failed to disconnect")
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     )
   }
@@ -149,131 +173,136 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your account and integrations
-        </p>
+        <h1 className="text-3xl font-bold">Settings</h1>
+        <p className="text-gray-600 mt-2">Manage your account and integrations</p>
       </div>
 
-      {/* Google Analytics Connection */}
+      {/* Google Analytics Integration */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Google Analytics</CardTitle>
               <CardDescription>
-                Connect your Google Analytics property to track website traffic
+                Connect your Google Analytics to track website traffic
               </CardDescription>
             </div>
             {gaConnection.connected ? (
-              <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100">
+              <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Connected
               </Badge>
             ) : (
-              <Badge variant="secondary" className="bg-gray-100 text-gray-600">
+              <Badge variant="outline" className="text-gray-600">
                 <XCircle className="h-3 w-3 mr-1" />
                 Not Connected
               </Badge>
             )}
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-red-900">Error</p>
-                <p className="text-sm text-red-700 mt-1">{error}</p>
-              </div>
+              <div className="text-sm text-red-800">{error}</div>
             </div>
           )}
 
           {success && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
-              <CheckCircle className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-emerald-900">Success</p>
-                <p className="text-sm text-emerald-700 mt-1">{success}</p>
-              </div>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+              <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-green-800">{success}</div>
             </div>
           )}
 
-          {gaConnection.connected && (
-            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Property ID:</span>
-                <span className="font-medium">{gaConnection.propertyId}</span>
-              </div>
-              {gaConnection.lastSynced && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Last Synced:</span>
-                  <span className="font-medium">
-                    {new Date(gaConnection.lastSynced).toLocaleString()}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="propertyId">GA4 Property ID</Label>
-              <Input
-                id="propertyId"
-                placeholder="e.g., 123456789"
-                value={propertyId}
-                onChange={(e) => setPropertyId(e.target.value)}
-                disabled={gaConnection.connected}
-              />
-              <p className="text-xs text-muted-foreground">
-                Find this in Google Analytics → Admin → Property Settings
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="credentials">Service Account JSON</Label>
-              <Textarea
-                id="credentials"
-                placeholder='Paste your service account JSON here...'
-                value={credentialsJson}
-                onChange={(e) => setCredentialsJson(e.target.value)}
-                className="font-mono text-xs min-h-[200px]"
-                disabled={gaConnection.connected}
-              />
-              <p className="text-xs text-muted-foreground">
-                Create a service account in Google Cloud Console → IAM & Admin → Service Accounts.
-                Add the service account email as a Viewer in your GA property.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            {!gaConnection.connected ? (
-              <>
+          {!gaConnection.connected ? (
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <h3 className="font-semibold text-blue-900 mb-2">Quick & Easy Setup</h3>
+                <p className="text-sm text-blue-800 mb-4">
+                  Connect your Google Analytics in seconds with a simple sign-in flow. No technical setup required!
+                </p>
+                <ul className="text-sm text-blue-800 space-y-2 mb-4">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Sign in with your Google account
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Grant read-only access to your GA data
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Select your GA4 property - done!
+                  </li>
+                </ul>
                 <Button
-                  onClick={handleSaveGA}
-                  disabled={saving || !propertyId || !credentialsJson}
-                  className="bg-gray-900 hover:bg-gray-800"
+                  onClick={handleConnectGA}
+                  disabled={connecting}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
                 >
-                  {saving ? (
+                  {connecting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Connecting...
                     </>
                   ) : (
                     <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Connect Google Analytics
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Connect with Google
                     </>
                   )}
                 </Button>
-              </>
-            ) : (
-              <>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <h3 className="font-semibold text-green-900 mb-2 flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5" />
+                  Google Analytics Connected!
+                </h3>
+                <p className="text-sm text-green-800">
+                  Your analytics data will now appear on the dashboard.
+                </p>
+              </div>
+
+              {gaConnection.availableProperties && gaConnection.availableProperties.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Select GA4 Property</label>
+                  <Select value={selectedProperty} onValueChange={handleSelectProperty}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a property..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {gaConnection.availableProperties.map((prop) => (
+                        <SelectItem key={prop.id} value={prop.id}>
+                          {prop.name} ({prop.id})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {gaConnection.propertyId && (
+                <div className="space-y-2">
+                  <div className="text-sm">
+                    <span className="font-medium">Property ID:</span> {gaConnection.propertyId}
+                  </div>
+                  {gaConnection.lastSynced && (
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium">Last Synced:</span>{' '}
+                      {new Date(gaConnection.lastSynced).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-2">
                 <Button
                   onClick={handleTestConnection}
-                  disabled={testing}
+                  disabled={testing || !gaConnection.propertyId}
                   variant="outline"
                 >
                   {testing ? (
@@ -292,41 +321,9 @@ export default function SettingsPage() {
                 >
                   Disconnect
                 </Button>
-              </>
-            )}
-          </div>
-
-          {!gaConnection.connected && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <p className="text-sm font-medium text-amber-900 mb-2">Setup Instructions:</p>
-              <ol className="text-sm text-amber-800 space-y-1 list-decimal list-inside">
-                <li>Go to Google Cloud Console and create a new service account</li>
-                <li>Download the JSON key file for the service account</li>
-                <li>In Google Analytics, add the service account email as a Viewer</li>
-                <li>Copy your GA4 Property ID from Analytics → Admin → Property Settings</li>
-                <li>Paste the Property ID and JSON key contents above</li>
-              </ol>
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Account Settings Placeholder */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Account Settings</CardTitle>
-          <CardDescription>
-            Additional settings coming soon
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
-            <li>Profile management</li>
-            <li>API key configuration</li>
-            <li>Notification preferences</li>
-            <li>Webhook integrations</li>
-            <li>Subscription management</li>
-          </ul>
         </CardContent>
       </Card>
     </div>

@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth/session'
-import { getGAOAuthTokens } from '@/lib/firebase/storage'
+import { getGACredentials } from '@/lib/firebase/storage'
 import { BetaAnalyticsDataClient } from '@google-analytics/data'
-import { OAuth2Client } from 'google-auth-library'
-import { db, COLLECTIONS } from '@/lib/firebase/config'
+import os from 'os'
+import fs from 'fs'
+import path from 'path'
 
 export async function GET(request: NextRequest) {
+  let tempCredentialsPath: string | null = null
+
   try {
-    console.log('=== Starting OAuth GA Test Connection ===')
+    console.log('=== Starting GA Test Connection ===')
     const session = await getSession()
     console.log('Session:', session ? `User ID: ${session.userId}` : 'No session')
 
@@ -19,49 +22,30 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get OAuth tokens
-    console.log('Fetching OAuth tokens for user:', session.userId)
-    const tokens = await getGAOAuthTokens(session.userId)
+    // Get user's GA credentials
+    console.log('Fetching GA credentials for user:', session.userId)
+    const gaData = await getGACredentials(session.userId)
+    console.log('GA Data retrieved:', gaData ? `Property ID: ${gaData.propertyId}` : 'No GA data')
 
-    if (!tokens || !tokens.accessToken) {
-      console.log('ERROR: No OAuth tokens found')
+    if (!gaData) {
       return NextResponse.json(
         { error: 'Google Analytics not connected. Please connect first.' },
         { status: 400 }
       )
     }
 
-    // Get property ID
-    const userDoc = await db.collection(COLLECTIONS.USERS).doc(session.userId).get()
-    const userData = userDoc.data()
-    const propertyId = userData?.ga_property_id
+    const { propertyId, credentials } = gaData
 
-    if (!propertyId) {
-      console.log('ERROR: No property ID selected')
-      return NextResponse.json(
-        { error: 'Please select a GA4 property first.' },
-        { status: 400 }
-      )
-    }
+    // Create temporary credentials file
+    const tempDir = os.tmpdir()
+    tempCredentialsPath = path.join(tempDir, `ga-test-${session.userId}-${Date.now()}.json`)
+    console.log('Writing credentials to temp file:', tempCredentialsPath)
+    fs.writeFileSync(tempCredentialsPath, JSON.stringify(credentials))
 
-    console.log('Property ID:', propertyId)
-
-    // Create OAuth2 client with tokens
-    const oauth2Client = new OAuth2Client(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET
-    )
-
-    oauth2Client.setCredentials({
-      access_token: tokens.accessToken,
-      refresh_token: tokens.refreshToken || undefined,
-      expiry_date: tokens.expiryDate || undefined,
-    })
-
-    // Initialize GA Data API client with OAuth
-    console.log('Initializing GA Data API client with OAuth...')
+    // Initialize GA Data API client
+    console.log('Initializing GA Data API client...')
     const analyticsDataClient = new BetaAnalyticsDataClient({
-      auth: oauth2Client,
+      keyFilename: tempCredentialsPath,
     })
 
     // Test connection by fetching last 7 days of data
@@ -89,7 +73,11 @@ export async function GET(request: NextRequest) {
       return sum + parseInt(row.metricValues?.[1]?.value || '0')
     }, 0) || 0
 
-    console.log('✅ Success! Users:', totalUsers, 'Sessions:', totalSessions)
+    // Clean up temp file
+    if (tempCredentialsPath && fs.existsSync(tempCredentialsPath)) {
+      fs.unlinkSync(tempCredentialsPath)
+      tempCredentialsPath = null
+    }
 
     return NextResponse.json({
       success: true,
@@ -103,7 +91,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     // Enhanced error logging
-    console.error('=== OAuth GA Test Connection Error ===')
+    console.error('=== GA Test Connection Error ===')
     console.error('Full error object:', JSON.stringify(error, null, 2))
     console.error('Error message:', error instanceof Error ? error.message : String(error))
     console.error('Error stack:', error instanceof Error ? error.stack : 'N/A')
@@ -112,22 +100,24 @@ export async function GET(request: NextRequest) {
     }
     console.error('================================')
 
+    // Clean up temp file on error
+    if (tempCredentialsPath && fs.existsSync(tempCredentialsPath)) {
+      fs.unlinkSync(tempCredentialsPath)
+    }
+
     // Provide helpful error messages
     let errorMessage = 'Connection test failed'
     let errorDetails = error instanceof Error ? error.message : 'Unknown error'
 
     if (errorDetails.includes('PERMISSION_DENIED') || errorDetails.includes('403')) {
       errorMessage = 'Permission denied'
-      errorDetails = 'Unable to access GA property. Please reconnect your Google Analytics account.'
+      errorDetails = 'The service account does not have access to this GA property. Please add the service account email as a Viewer in Google Analytics → Admin → Property Access Management.'
     } else if (errorDetails.includes('NOT_FOUND') || errorDetails.includes('404')) {
       errorMessage = 'Property not found'
       errorDetails = 'The GA4 Property ID could not be found. Please verify the Property ID is correct.'
     } else if (errorDetails.includes('INVALID_ARGUMENT')) {
       errorMessage = 'Invalid credentials'
-      errorDetails = 'The OAuth credentials appear to be invalid. Please reconnect your account.'
-    } else if (errorDetails.includes('invalid_grant') || errorDetails.includes('Token has been expired')) {
-      errorMessage = 'Token expired'
-      errorDetails = 'Your Google Analytics connection has expired. Please reconnect your account.'
+      errorDetails = 'The service account credentials appear to be invalid. Please re-download the JSON key file.'
     }
 
     return NextResponse.json(

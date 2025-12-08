@@ -681,5 +681,58 @@ export async function deleteGACredentials(userId: string): Promise<void> {
     ga_credentials: FieldValue.delete(),
     ga_connected_at: FieldValue.delete(),
     ga_last_synced_at: FieldValue.delete(),
+    ga_oauth_tokens: FieldValue.delete(),
+    ga_available_properties: FieldValue.delete(),
+  })
+}
+
+/**
+ * Google Analytics OAuth Token Management
+ */
+
+export interface GAOAuthTokens {
+  accessToken: string
+  refreshToken: string | null
+  expiryDate: number | null
+  properties?: Array<{ id: string; name: string }>
+}
+
+export async function saveGAOAuthTokens(userId: string, tokens: GAOAuthTokens): Promise<void> {
+  const encrypted = Buffer.from(JSON.stringify(tokens)).toString('base64')
+
+  const ref = db.collection(COLLECTIONS.USERS).doc(userId)
+
+  await ref.update({
+    ga_oauth_tokens: encrypted,
+    ga_available_properties: tokens.properties || [],
+    ga_connected_at: Timestamp.now(),
+    updated_at: Timestamp.now(),
+  })
+}
+
+export async function getGAOAuthTokens(userId: string): Promise<GAOAuthTokens | null> {
+  const doc = await db.collection(COLLECTIONS.USERS).doc(userId).get()
+
+  if (!doc.exists) {
+    return null
+  }
+
+  const data = doc.data()!
+
+  if (!data.ga_oauth_tokens) {
+    return null
+  }
+
+  // Decrypt tokens
+  const decrypted = Buffer.from(data.ga_oauth_tokens, 'base64').toString('utf-8')
+  const tokens = JSON.parse(decrypted)
+
+  return tokens
+}
+
+export async function saveSelectedGAProperty(userId: string, propertyId: string): Promise<void> {
+  await db.collection(COLLECTIONS.USERS).doc(userId).update({
+    ga_property_id: propertyId,
+    updated_at: Timestamp.now(),
   })
 }

@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { BetaAnalyticsDataClient } from '@google-analytics/data'
-import { getGAOAuthTokens, updateGALastSynced } from '@/lib/firebase/storage'
+import { getGACredentials, updateGALastSynced } from '@/lib/firebase/storage'
 import { getSession } from '@/lib/auth/session'
-import { OAuth2Client } from 'google-auth-library'
-import { db, COLLECTIONS } from '@/lib/firebase/config'
+import os from 'os'
+import fs from 'fs'
+import path from 'path'
 
 export async function GET(request: NextRequest) {
+  let tempCredentialsPath: string | null = null
+
   try {
     // Get user ID from session
     const session = await getSession()
@@ -25,43 +28,27 @@ export async function GET(request: NextRequest) {
 
     console.log(`Fetching GA data from ${startDate} to ${endDate} for user ${userId}`)
 
-    // Get user's OAuth tokens from database
-    const tokens = await getGAOAuthTokens(userId)
+    // Get user's GA credentials from database
+    const gaData = await getGACredentials(userId)
 
-    if (!tokens || !tokens.accessToken) {
+    if (!gaData) {
       return NextResponse.json(
         { error: 'Google Analytics not connected. Please connect first.' },
         { status: 400 }
       )
     }
 
-    // Get property ID
-    const userDoc = await db.collection(COLLECTIONS.USERS).doc(userId).get()
-    const userData = userDoc.data()
-    const propertyId = userData?.ga_property_id
+    const { propertyId, credentials } = gaData
 
-    if (!propertyId) {
-      return NextResponse.json(
-        { error: 'Please select a GA4 property in Settings.' },
-        { status: 400 }
-      )
-    }
+    // Create temporary credentials file for this request
+    // (Google Analytics SDK requires a file path)
+    const tempDir = os.tmpdir()
+    tempCredentialsPath = path.join(tempDir, `ga-creds-${userId}-${Date.now()}.json`)
+    fs.writeFileSync(tempCredentialsPath, JSON.stringify(credentials))
 
-    // Create OAuth2 client with tokens
-    const oauth2Client = new OAuth2Client(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET
-    )
-
-    oauth2Client.setCredentials({
-      access_token: tokens.accessToken,
-      refresh_token: tokens.refreshToken || undefined,
-      expiry_date: tokens.expiryDate || undefined,
-    })
-
-    // Initialize GA Data API client with OAuth
+    // Initialize GA Data API client with user's credentials
     const analyticsDataClient = new BetaAnalyticsDataClient({
-      auth: oauth2Client,
+      keyFilename: tempCredentialsPath,
     })
 
     // Fetch user engagement metrics
@@ -120,6 +107,12 @@ export async function GET(request: NextRequest) {
     // Update last synced timestamp
     await updateGALastSynced(userId)
 
+    // Clean up temp file
+    if (tempCredentialsPath && fs.existsSync(tempCredentialsPath)) {
+      fs.unlinkSync(tempCredentialsPath)
+      tempCredentialsPath = null
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -138,6 +131,11 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching GA data:', error)
+
+    // Clean up temp file on error
+    if (tempCredentialsPath && fs.existsSync(tempCredentialsPath)) {
+      fs.unlinkSync(tempCredentialsPath)
+    }
 
     // Provide more helpful error messages
     let errorMessage = 'Failed to fetch analytics data'

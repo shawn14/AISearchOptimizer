@@ -102,7 +102,8 @@ export default function DashboardPage() {
       const response = await fetch('/api/analytics/data?startDate=30daysAgo&endDate=today')
 
       if (!response.ok) {
-        console.error('GA API returned error status:', response.status)
+        const errorData = await response.json().catch(() => ({}))
+        console.error('GA API error:', response.status, errorData)
         setGaConnected(false)
         setGaData(null)
         return
