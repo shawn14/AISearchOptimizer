@@ -57,7 +57,7 @@ export default async function Image() {
         </div>
 
         {/* Description */}
-        <div style={{ fontSize: '28px', color: '#6b7280', marginBottom: '48px' }}>
+        <div style={{ fontSize: '28px', color: '#6b7280', marginBottom: '48px', display: 'flex', flexDirection: 'column' }}>
           <div>Monitor your brand visibility across ChatGPT,</div>
           <div>Claude, Perplexity, and Gemini</div>
         </div>
