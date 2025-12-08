@@ -617,3 +617,67 @@ export async function updateKnowledgeArticle(id: string, updates: Partial<Omit<K
 export async function deleteKnowledgeArticle(id: string): Promise<void> {
   await db.collection(COLLECTIONS.KNOWLEDGE_ARTICLES).doc(id).delete()
 }
+
+/**
+ * Google Analytics Integration (Per-User)
+ */
+
+export interface GoogleAnalyticsConnection {
+  user_id: string
+  property_id: string
+  credentials: string // Encrypted JSON credentials
+  connected_at: Date
+  last_synced_at?: Date
+}
+
+export async function saveGACredentials(userId: string, propertyId: string, credentialsJson: string): Promise<void> {
+  // Simple encryption (in production, use proper encryption library)
+  const encrypted = Buffer.from(credentialsJson).toString('base64')
+
+  const ref = db.collection(COLLECTIONS.USERS).doc(userId)
+
+  await ref.update({
+    ga_property_id: propertyId,
+    ga_credentials: encrypted,
+    ga_connected_at: Timestamp.now(),
+    updated_at: Timestamp.now(),
+  })
+}
+
+export async function getGACredentials(userId: string): Promise<{ propertyId: string; credentials: any } | null> {
+  const doc = await db.collection(COLLECTIONS.USERS).doc(userId).get()
+
+  if (!doc.exists) {
+    return null
+  }
+
+  const data = doc.data()!
+
+  if (!data.ga_property_id || !data.ga_credentials) {
+    return null
+  }
+
+  // Decrypt credentials
+  const decrypted = Buffer.from(data.ga_credentials, 'base64').toString('utf-8')
+  const credentials = JSON.parse(decrypted)
+
+  return {
+    propertyId: data.ga_property_id,
+    credentials,
+  }
+}
+
+export async function updateGALastSynced(userId: string): Promise<void> {
+  await db.collection(COLLECTIONS.USERS).doc(userId).update({
+    ga_last_synced_at: Timestamp.now(),
+  })
+}
+
+export async function deleteGAConnection(userId: string): Promise<void> {
+  await db.collection(COLLECTIONS.USERS).doc(userId).update({
+    ga_property_id: FieldValue.delete(),
+    ga_credentials: FieldValue.delete(),
+    ga_connected_at: FieldValue.delete(),
+    ga_last_synced_at: FieldValue.delete(),
+  })
+}

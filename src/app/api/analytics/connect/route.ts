@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import fs from 'fs'
-import path from 'path'
+import { getGACredentials } from '@/lib/firebase/storage'
 
 export async function POST(request: NextRequest) {
   try {
+    // Get user ID from session/auth (for now using header)
+    const userId = request.headers.get('x-user-id')
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized - User ID required' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const { propertyId } = body
 
@@ -11,41 +20,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Property ID is required' }, { status: 400 })
     }
 
-    console.log('Connecting to Google Analytics property:', propertyId)
+    console.log('Connecting to Google Analytics property:', propertyId, 'for user:', userId)
 
-    // Check if credentials file exists
-    const credentialsPath = path.join(process.cwd(), 'google-credentials.json')
-    if (!fs.existsSync(credentialsPath)) {
+    // Check if user has uploaded credentials
+    const gaData = await getGACredentials(userId)
+
+    if (!gaData) {
       return NextResponse.json(
         {
-          error: 'Google Analytics credentials not found. Please add google-credentials.json to project root.',
-          instructions: 'Download the service account JSON key from Google Cloud Console and save it as google-credentials.json in the project root.'
+          error: 'Google Analytics credentials not found. Please upload your service account JSON key first.',
+          instructions: 'Go to Settings > Analytics to upload your Google Analytics credentials.'
         },
         { status: 400 }
       )
     }
 
-    // Store the connection info
-    const dataDir = path.join(process.cwd(), 'data')
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true })
-    }
-
-    const connectionData = {
-      propertyId,
-      connectedAt: new Date().toISOString()
-    }
-
-    fs.writeFileSync(
-      path.join(dataDir, 'ga-connection.json'),
-      JSON.stringify(connectionData, null, 2)
-    )
-
     return NextResponse.json({
       success: true,
       message: 'Google Analytics connected successfully',
-      propertyId,
-      connectedAt: connectionData.connectedAt
+      propertyId: gaData.propertyId,
     })
 
   } catch (error) {
@@ -61,22 +54,29 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Check for stored connection
-    const connectionsPath = path.join(process.cwd(), 'data', 'ga-connection.json')
+    // Get user ID from session/auth (for now using header)
+    const userId = request.headers.get('x-user-id')
 
-    if (fs.existsSync(connectionsPath)) {
-      const connectionData = JSON.parse(fs.readFileSync(connectionsPath, 'utf-8'))
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized - User ID required' },
+        { status: 401 }
+      )
+    }
+
+    // Check for user's GA connection
+    const gaData = await getGACredentials(userId)
+
+    if (gaData) {
       return NextResponse.json({
         connected: true,
-        propertyId: connectionData.propertyId,
-        lastSync: connectionData.connectedAt
+        propertyId: gaData.propertyId,
       })
     }
 
     return NextResponse.json({
       connected: false,
       propertyId: null,
-      lastSync: null
     })
   } catch (error) {
     console.error('Error fetching GA connection status:', error)
