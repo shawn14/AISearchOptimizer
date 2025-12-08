@@ -924,13 +924,15 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-4">
               {recentMentions.map((mention, i) => {
-                const platformConfig = {
+                const platformConfigs: Record<string, { icon: any; name: string }> = {
                   chatgpt: { icon: MessageSquare, name: 'ChatGPT' },
                   claude: { icon: Brain, name: 'Claude' },
                   perplexity: { icon: Search, name: 'Perplexity' },
                   gemini: { icon: Sparkles, name: 'Gemini' },
                   grok: { icon: Zap, name: 'Grok' }
-                }[mention.platform.toLowerCase()] || { icon: Activity, name: mention.platform }
+                }
+                const platformKey = mention.platform.toLowerCase()
+                const platformConfig = platformConfigs[platformKey] || { icon: Activity, name: mention.platform }
 
                 const PlatformIcon = platformConfig.icon
 
