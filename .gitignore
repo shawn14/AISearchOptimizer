@@ -39,3 +39,7 @@ next-env.d.ts
 
 # Google Analytics credentials
 google-credentials.json
+
+# Environment files
+.env.yaml
+.env.production
