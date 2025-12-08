@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getFirestore } from '@/lib/firebase/config'
+import { db } from '@/lib/firebase/config'
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,8 +31,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-
-    const db = getFirestore()
 
     // Create application document
     const applicationData = {
