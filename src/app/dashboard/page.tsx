@@ -53,14 +53,30 @@ export default function DashboardPage() {
     fetchData()
     checkGAConnection()
     fetchPrimaryBrand()
+    loadCachedInsights()
   }, [])
+
+  // Load cached insights from Firestore on mount
+  async function loadCachedInsights() {
+    try {
+      const response = await fetch('/api/insights')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.insights) {
+          setInsights(data.insights)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load cached insights:', error)
+    }
+  }
 
   async function checkGAConnection() {
     try {
-      const response = await fetch('/api/analytics/connect')
-      const data = await response.json()
+      // Check if local GA data file exists
+      const response = await fetch('/api/analytics/local-data')
 
-      if (data.connected) {
+      if (response.ok) {
         setGaConnected(true)
         await fetchGoogleAnalyticsData()
       }
@@ -71,21 +87,18 @@ export default function DashboardPage() {
 
   async function fetchGoogleAnalyticsData() {
     try {
-      const response = await fetch('/api/analytics/data?startDate=30daysAgo&endDate=today')
+      // For now, read from local data file
+      const response = await fetch('/api/analytics/local-data')
 
       if (!response.ok) {
         console.error('GA API returned error status:', response.status)
         return
       }
 
-      const text = await response.text()
-      if (!text) {
-        console.error('GA API returned empty response')
-        return
+      const result = await response.json()
+      if (result.data) {
+        setGaData(result.data)
       }
-
-      const result = JSON.parse(text)
-      setGaData(result.data)
     } catch (error) {
       console.error('Failed to fetch GA data:', error)
     }
@@ -532,7 +545,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-base font-semibold">AI Insights</CardTitle>
-                <CardDescription>Strategic analysis powered by Claude Sonnet</CardDescription>
+                <CardDescription>Strategic analysis of your metrics</CardDescription>
               </div>
               <Button
                 onClick={generateInsights}
@@ -549,7 +562,7 @@ export default function DashboardPage() {
                 ) : (
                   <>
                     <RefreshCw className="h-4 w-4" />
-                    Generate
+                    {insights ? 'Refresh' : 'Generate'}
                   </>
                 )}
               </Button>
@@ -569,7 +582,7 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {insights && !generatingInsights && (
+            {insights && (
               <div className="space-y-6">
                 {/* Executive Summary */}
                 <div>
@@ -696,155 +709,93 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Google Analytics Traffic Charts */}
-      {gaConnected && gaData && gaData.trafficTrend && gaData.trafficTrend.length > 0 && (
+
+      {/* Google Analytics Tables */}
+      {gaConnected && gaData && gaData.topPages && gaData.topPages.length > 0 && (
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Users & Sessions Chart */}
+          {/* Top Pages */}
           <Card>
             <CardHeader>
-              <CardTitle>Traffic Overview</CardTitle>
-              <CardDescription>Users and sessions over time</CardDescription>
+              <CardTitle>Google Analytics - Top Pages</CardTitle>
+              <CardDescription>Most visited pages in the last 30 days</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={gaData.trafficTrend}>
-                  <defs>
-                    <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorSessions" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis
-                    dataKey="date"
-                    fontSize={12}
-                    tickFormatter={(value) => {
-                      const date = new Date(value.substring(0, 4) + '-' + value.substring(4, 6) + '-' + value.substring(6, 8))
-                      return `${date.getMonth() + 1}/${date.getDate()}`
-                    }}
-                  />
-                  <YAxis fontSize={12} />
-                  <Tooltip
-                    labelFormatter={(value) => {
-                      const date = new Date(value.substring(0, 4) + '-' + value.substring(4, 6) + '-' + value.substring(6, 8))
-                      return date.toLocaleDateString()
-                    }}
-                    formatter={(value: number) => value.toLocaleString()}
-                  />
-                  <Legend />
-                  <Area
-                    type="monotone"
-                    dataKey="users"
-                    stroke="#6366f1"
-                    fillOpacity={1}
-                    fill="url(#colorUsers)"
-                    strokeWidth={2}
-                    name="Users"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="sessions"
-                    stroke="#10b981"
-                    fillOpacity={1}
-                    fill="url(#colorSessions)"
-                    strokeWidth={2}
-                    name="Sessions"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Page</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Views</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gaData.topPages.slice(0, 7).map((page: any, idx: number) => (
+                      <tr key={idx} className="border-b last:border-0">
+                        <td className="py-3 px-4 text-sm">{page.page}</td>
+                        <td className="py-3 px-4 text-sm text-right font-medium">{page.pageViews?.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Page Views Chart */}
+          {/* Year-to-Date Traffic Trend */}
           <Card>
             <CardHeader>
-              <CardTitle>Page Views Trend</CardTitle>
-              <CardDescription>Daily page views over time</CardDescription>
+              <CardTitle>Google Analytics - Year to Date Traffic</CardTitle>
+              <CardDescription>Monthly traffic trend for 2025</CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={gaData.trafficTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis
-                    dataKey="date"
-                    fontSize={12}
-                    tickFormatter={(value) => {
-                      const date = new Date(value.substring(0, 4) + '-' + value.substring(4, 6) + '-' + value.substring(6, 8))
-                      return `${date.getMonth() + 1}/${date.getDate()}`
-                    }}
-                  />
-                  <YAxis fontSize={12} />
-                  <Tooltip
-                    labelFormatter={(value) => {
-                      const date = new Date(value.substring(0, 4) + '-' + value.substring(4, 6) + '-' + value.substring(6, 8))
-                      return date.toLocaleDateString()
-                    }}
-                    formatter={(value: number) => value.toLocaleString()}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="pageViews"
-                    stroke="#f59e0b"
-                    strokeWidth={3}
-                    name="Page Views"
-                    dot={{ fill: '#f59e0b', r: 3 }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {gaData.trafficTrend && gaData.trafficTrend.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={gaData.trafficTrend}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis
+                      dataKey="date"
+                      fontSize={12}
+                      tickFormatter={(value) => value}
+                    />
+                    <YAxis fontSize={12} />
+                    <Tooltip
+                      formatter={(value: number) => value.toLocaleString()}
+                    />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="users"
+                      stroke="#6366f1"
+                      strokeWidth={2}
+                      name="Users"
+                      dot={{ fill: '#6366f1', r: 4 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="sessions"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      name="Sessions"
+                      dot={{ fill: '#10b981', r: 4 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="pageViews"
+                      stroke="#f59e0b"
+                      strokeWidth={2}
+                      name="Page Views"
+                      dot={{ fill: '#f59e0b', r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="py-12 text-center text-sm text-muted-foreground">
+                  No traffic trend data available
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
-      )}
-
-      {/* Top Pages Chart */}
-      {gaConnected && gaData && gaData.topPages && gaData.topPages.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Pages by Traffic</CardTitle>
-            <CardDescription>Most visited pages in the last 30 days</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
-              <BarChart
-                data={gaData.topPages.slice(0, 10)}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis type="number" fontSize={12} />
-                <YAxis
-                  type="category"
-                  dataKey="page"
-                  fontSize={11}
-                  width={90}
-                  tickFormatter={(value) => value.length > 15 ? value.substring(0, 15) + '...' : value}
-                />
-                <Tooltip
-                  formatter={(value: number) => value.toLocaleString()}
-                  labelFormatter={(value) => value}
-                />
-                <Legend />
-                <Bar
-                  dataKey="pageViews"
-                  fill="#6366f1"
-                  name="Page Views"
-                  radius={[0, 4, 4, 0]}
-                />
-                <Bar
-                  dataKey="users"
-                  fill="#10b981"
-                  name="Users"
-                  radius={[0, 4, 4, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
       )}
 
       {/* Page Audit Scores */}

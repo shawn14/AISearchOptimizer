@@ -22,6 +22,8 @@ import {
   Lightbulb
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react"
+import Image from "next/image"
 
 const navigation = [
   {
@@ -94,6 +96,25 @@ const navigation = [
 export function DashboardNav() {
   const pathname = usePathname()
   const router = useRouter()
+  const [brandFavicon, setBrandFavicon] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchBrandFavicon() {
+      try {
+        const response = await fetch('/api/brands')
+        const brands = await response.json()
+        if (brands.length > 0 && brands[0].website_url) {
+          const url = new URL(brands[0].website_url.startsWith('http')
+            ? brands[0].website_url
+            : `https://${brands[0].website_url}`)
+          setBrandFavicon(`https://www.google.com/s2/favicons?domain=${url.hostname}&sz=128`)
+        }
+      } catch (error) {
+        console.error('Failed to fetch brand favicon:', error)
+      }
+    }
+    fetchBrandFavicon()
+  }, [])
 
   const handleSignOut = async () => {
     try {
@@ -107,13 +128,10 @@ export function DashboardNav() {
   return (
     <nav className="flex flex-col h-screen bg-card">
       <div className="flex items-center gap-3 px-6 py-6 border-b border-border">
-        <div className="h-9 w-9 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center shadow-sm">
-          <span className="text-primary-foreground font-bold text-sm">R</span>
+        <div className="h-8 w-8 bg-gray-900 rounded-md flex items-center justify-center">
+          <span className="text-white font-bold text-sm">R</span>
         </div>
-        <div className="flex flex-col">
-          <span className="font-bold text-lg leading-none">RevIntel</span>
-          <span className="text-[10px] text-muted-foreground leading-none mt-0.5">AI Search Intelligence</span>
-        </div>
+        <span className="font-semibold text-lg">RevIntel</span>
       </div>
       <div className="flex-1 px-3 py-4">
         {navigation.map((item) => {
@@ -139,10 +157,23 @@ export function DashboardNav() {
         <Button
           onClick={handleSignOut}
           variant="ghost"
-          className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-muted"
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground hover:bg-muted"
         >
-          <LogOut className="h-4 w-4 mr-3" />
-          Sign Out
+          {brandFavicon ? (
+            <div className="h-4 w-4 relative flex-shrink-0">
+              <Image
+                src={brandFavicon}
+                alt="Brand"
+                width={16}
+                height={16}
+                className="object-contain"
+                onError={() => setBrandFavicon(null)}
+              />
+            </div>
+          ) : (
+            <LogOut className="h-4 w-4" />
+          )}
+          <span>Sign Out</span>
         </Button>
       </div>
     </nav>

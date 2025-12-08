@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import OpenAI from "openai"
 import fs from "fs"
 import path from "path"
+import { getSession } from "@/lib/auth/session"
+import { getGACredentials } from "@/lib/firebase/storage"
+import { BetaAnalyticsDataClient } from '@google-analytics/data'
+import os from 'os'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -129,22 +133,20 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
       ? Math.round(audits.reduce((sum: number, a: any) => sum + (a.content_score || 0), 0) / audits.length)
       : 0
 
-    // Fetch actual GA data
+    // Read GA data from local file (for development)
     let gaData: any = null
     let gaConnected = false
 
     try {
-      // Call the analytics API to get actual data
-      const gaResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/analytics/data?startDate=30daysAgo&endDate=today`)
-      if (gaResponse.ok) {
-        const gaResult = await gaResponse.json()
-        if (gaResult.data) {
-          gaData = gaResult.data
-          gaConnected = true
-        }
+      const gaDataPath = path.join(process.cwd(), 'data', 'ga-data.json')
+      const gaConnectionPath = path.join(process.cwd(), 'data', 'ga-connection.json')
+
+      if (fs.existsSync(gaConnectionPath) && fs.existsSync(gaDataPath)) {
+        gaConnected = true
+        gaData = JSON.parse(fs.readFileSync(gaDataPath, 'utf-8'))
       }
     } catch (error) {
-      console.error('Error fetching GA data for chat:', error)
+      console.error('Error reading GA data for chat:', error)
     }
 
     // Build context string

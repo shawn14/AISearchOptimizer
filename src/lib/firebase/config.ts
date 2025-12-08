@@ -45,4 +45,5 @@ export const COLLECTIONS = {
   USERS: 'users',
   COMPETITORS: 'competitors',
   KNOWLEDGE_ARTICLES: 'knowledge_articles',
+  INSIGHTS: 'dashboard_insights',
 } as const
