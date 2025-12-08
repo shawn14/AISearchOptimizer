@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     // Initialize GA Data API client with OAuth
     const analyticsDataClient = new BetaAnalyticsDataClient({
-      auth: oauth2Client,
+      authClient: oauth2Client,
     })
 
     // Fetch user engagement metrics

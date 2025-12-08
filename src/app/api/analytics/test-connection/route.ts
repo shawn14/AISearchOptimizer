@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     // Initialize GA Data API client with OAuth
     console.log('Initializing GA Data API client with OAuth...')
     const analyticsDataClient = new BetaAnalyticsDataClient({
-      auth: oauth2Client,
+      authClient: oauth2Client,
     })
 
     // Test connection by fetching last 7 days of data
