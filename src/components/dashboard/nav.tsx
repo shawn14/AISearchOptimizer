@@ -126,12 +126,12 @@ export function DashboardNav() {
   }
 
   return (
-    <nav className="flex flex-col h-screen bg-card">
-      <div className="flex items-center gap-3 px-6 py-6 border-b border-border">
+    <nav className="flex flex-col h-screen bg-white border-r border-gray-200">
+      <div className="flex items-center gap-3 px-6 py-6 border-b border-gray-200">
         <div className="h-8 w-8 bg-gray-900 rounded-md flex items-center justify-center">
           <span className="text-white font-bold text-sm">R</span>
         </div>
-        <span className="font-semibold text-lg">RevIntel</span>
+        <span className="font-semibold text-base">RevIntel</span>
       </div>
       <div className="flex-1 px-3 py-4">
         {navigation.map((item) => {
@@ -141,10 +141,10 @@ export function DashboardNav() {
               key={item.name}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all rounded-lg mb-1",
+                "flex items-center gap-3 px-3 py-2.5 text-sm transition-all rounded-lg mb-0.5",
                 isActive
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-amber-50 text-gray-900 font-medium border border-amber-100"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               )}
             >
               <item.icon className="h-4 w-4" />
@@ -153,11 +153,11 @@ export function DashboardNav() {
           )
         })}
       </div>
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-gray-200">
         <Button
           onClick={handleSignOut}
           variant="ghost"
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground hover:bg-muted"
+          className="w-full justify-start gap-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50 text-sm"
         >
           {brandFavicon ? (
             <div className="h-4 w-4 relative flex-shrink-0">

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, Activity, Target, Loader2, Sparkles, Users, MousePointer, BarChart3, Eye, Play, Star, Brain, MessageSquare, Search, Zap, RefreshCw, Lightbulb, AlertTriangle, CheckCircle } from "lucide-react"
+import { TrendingUp, Activity, Target, Loader2, Sparkles, Users, MousePointer, BarChart3, Eye, Play, Star, Brain, MessageSquare, Search, Zap, RefreshCw, Lightbulb, AlertTriangle, CheckCircle, Settings } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, Area, AreaChart } from 'recharts'
 
 interface MonitoringRun {
@@ -73,25 +73,38 @@ export default function DashboardPage() {
 
   async function checkGAConnection() {
     try {
-      // Check if local GA data file exists
-      const response = await fetch('/api/analytics/local-data')
+      // Check if user has connected their GA account
+      const response = await fetch('/api/analytics/connection')
 
       if (response.ok) {
-        setGaConnected(true)
-        await fetchGoogleAnalyticsData()
+        const data = await response.json()
+        if (data.connected) {
+          setGaConnected(true)
+          await fetchGoogleAnalyticsData()
+        } else {
+          setGaConnected(false)
+          setGaData(null)
+        }
+      } else {
+        setGaConnected(false)
+        setGaData(null)
       }
     } catch (error) {
       console.error('Failed to check GA connection:', error)
+      setGaConnected(false)
+      setGaData(null)
     }
   }
 
   async function fetchGoogleAnalyticsData() {
     try {
-      // For now, read from local data file
-      const response = await fetch('/api/analytics/local-data')
+      // Fetch real GA data from user's connected account
+      const response = await fetch('/api/analytics/data?startDate=30daysAgo&endDate=today')
 
       if (!response.ok) {
         console.error('GA API returned error status:', response.status)
+        setGaConnected(false)
+        setGaData(null)
         return
       }
 
@@ -101,6 +114,8 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Failed to fetch GA data:', error)
+      setGaConnected(false)
+      setGaData(null)
     }
   }
 
@@ -361,7 +376,12 @@ export default function DashboardPage() {
             Track your brand visibility across ChatGPT, Claude, Perplexity, Gemini & Grok
           </p>
         </div>
-        <Button onClick={runMonitoring} disabled={monitoring} size="lg" className="gap-2">
+        <Button
+          onClick={runMonitoring}
+          disabled={monitoring}
+          size="lg"
+          className="gap-2 bg-gray-900 hover:bg-gray-800 text-white"
+        >
           {monitoring ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -398,31 +418,29 @@ export default function DashboardPage() {
       {/* Key Metrics */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Overall Visibility
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-normal text-muted-foreground">
+              AI Visibility Score
             </CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{avgVisibilityScore}/100</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Across all AI platforms
+            <div className="text-3xl font-semibold">{avgVisibilityScore}%</div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Trend over the last 7 days
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-normal text-muted-foreground">
               Brand Mentions
             </CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalMentions}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Out of {totalQueriesTested} queries tested
+            <div className="text-3xl font-semibold">{totalMentions}</div>
+            <p className="text-sm text-muted-foreground mt-1">
+              Out of {totalQueriesTested} queries
             </p>
           </CardContent>
         </Card>
@@ -430,30 +448,28 @@ export default function DashboardPage() {
         {gaConnected && gaData ? (
           <>
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-normal text-muted-foreground">
                   Total Users
                 </CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{gaData.metrics?.totalUsers?.toLocaleString() || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">
+                <div className="text-3xl font-semibold">{gaData.metrics?.totalUsers?.toLocaleString() || 0}</div>
+                <p className="text-sm text-muted-foreground mt-1">
                   Last 30 days
                 </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-normal text-muted-foreground">
                   Total Sessions
                 </CardTitle>
-                <Eye className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{gaData.metrics?.totalSessions?.toLocaleString() || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">
+                <div className="text-3xl font-semibold">{gaData.metrics?.totalSessions?.toLocaleString() || 0}</div>
+                <p className="text-sm text-muted-foreground mt-1">
                   User sessions
                 </p>
               </CardContent>
@@ -462,30 +478,28 @@ export default function DashboardPage() {
         ) : (
           <>
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-normal text-muted-foreground">
                   Pages Audited
                 </CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{audits.length}</div>
-                <p className="text-xs text-muted-foreground mt-1">
+                <div className="text-3xl font-semibold">{audits.length}</div>
+                <p className="text-sm text-muted-foreground mt-1">
                   {audits.filter(a => a.last_audited_at).length} with scores
                 </p>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-normal text-muted-foreground">
                   Avg AEO Score
                 </CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{avgAEO}/100</div>
-                <p className="text-xs text-muted-foreground mt-1">
+                <div className="text-3xl font-semibold">{avgAEO}/100</div>
+                <p className="text-sm text-muted-foreground mt-1">
                   AI Engine Optimization
                 </p>
               </CardContent>
@@ -498,8 +512,8 @@ export default function DashboardPage() {
       {Object.keys(platformStats).length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>LLM Visibility Breakdown</CardTitle>
-            <CardDescription>Your brand performance across each AI platform</CardDescription>
+            <CardTitle className="text-base font-semibold">LLM Visibility Breakdown</CardTitle>
+            <CardDescription className="text-sm">Your brand performance across each AI platform</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -507,26 +521,26 @@ export default function DashboardPage() {
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([platform, stats]) => {
                   const platformConfig = {
-                    chatgpt: { icon: MessageSquare, color: 'text-green-600', bgColor: 'bg-green-50', name: 'ChatGPT' },
-                    claude: { icon: Brain, color: 'text-orange-600', bgColor: 'bg-orange-50', name: 'Claude' },
-                    perplexity: { icon: Search, color: 'text-blue-600', bgColor: 'bg-blue-50', name: 'Perplexity' },
-                    gemini: { icon: Sparkles, color: 'text-purple-600', bgColor: 'bg-purple-50', name: 'Gemini' },
-                    grok: { icon: Zap, color: 'text-pink-600', bgColor: 'bg-pink-50', name: 'Grok' }
-                  }[platform.toLowerCase()] || { icon: Activity, color: 'text-gray-600', bgColor: 'bg-gray-50', name: platform }
+                    chatgpt: { icon: MessageSquare, name: 'ChatGPT', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+                    claude: { icon: Brain, name: 'Claude', bg: 'bg-amber-50', border: 'border-amber-100' },
+                    perplexity: { icon: Search, name: 'Perplexity', bg: 'bg-blue-50', border: 'border-blue-100' },
+                    gemini: { icon: Sparkles, name: 'Gemini', bg: 'bg-purple-50', border: 'border-purple-100' },
+                    grok: { icon: Zap, name: 'Grok', bg: 'bg-pink-50', border: 'border-pink-100' }
+                  }[platform.toLowerCase()] || { icon: Activity, name: platform, bg: 'bg-gray-50', border: 'border-gray-100' }
 
                   const Icon = platformConfig.icon
 
                   return (
-                    <div key={platform} className="p-4 rounded-lg border">
+                    <div key={platform} className={`p-4 rounded-lg border ${platformConfig.border} ${platformConfig.bg}`}>
                       <div className="flex items-center gap-2 mb-3">
                         <Icon className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">{platformConfig.name}</span>
+                        <span className="text-sm text-muted-foreground">{platformConfig.name}</span>
                       </div>
                       <div className="space-y-1">
                         <div className="text-2xl font-semibold">
                           {stats.visibility}%
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-sm text-muted-foreground">
                           {stats.mentions} of {stats.total} queries
                         </div>
                       </div>
@@ -710,8 +724,31 @@ export default function DashboardPage() {
       )}
 
 
-      {/* Google Analytics Tables */}
-      {gaConnected && gaData && gaData.topPages && gaData.topPages.length > 0 && (
+      {/* Google Analytics Section */}
+      {!gaConnected ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Google Analytics</CardTitle>
+            <CardDescription>Connect your Google Analytics to track website traffic</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <BarChart3 className="h-12 w-12 text-gray-300 mb-4" />
+              <p className="text-sm text-muted-foreground mb-4">
+                Google Analytics is not connected. Connect your GA property to see traffic data and insights.
+              </p>
+              <Button
+                onClick={() => router.push('/dashboard/settings')}
+                variant="outline"
+                className="gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                Go to Settings
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : gaConnected && gaData && gaData.topPages && gaData.topPages.length > 0 && (
         <div className="grid gap-6 md:grid-cols-2">
           {/* Top Pages */}
           <Card>

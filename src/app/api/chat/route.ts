@@ -133,20 +133,95 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
       ? Math.round(audits.reduce((sum: number, a: any) => sum + (a.content_score || 0), 0) / audits.length)
       : 0
 
-    // Read GA data from local file (for development)
+    // Check if user has real GA data connected
+    // NOTE: We do NOT use fake data - only real GA integration
     let gaData: any = null
     let gaConnected = false
 
     try {
-      const gaDataPath = path.join(process.cwd(), 'data', 'ga-data.json')
-      const gaConnectionPath = path.join(process.cwd(), 'data', 'ga-connection.json')
+      // Get user session to fetch their actual GA data
+      const session = await getSession()
+      if (session?.user?.id) {
+        const gaCredentials = await getGACredentials(session.user.id)
 
-      if (fs.existsSync(gaConnectionPath) && fs.existsSync(gaDataPath)) {
-        gaConnected = true
-        gaData = JSON.parse(fs.readFileSync(gaDataPath, 'utf-8'))
+        if (gaCredentials) {
+          gaConnected = true
+
+          // Fetch real GA data for the last 30 days
+          const tempDir = os.tmpdir()
+          const tempCredentialsPath = path.join(tempDir, `ga-creds-${session.user.id}-${Date.now()}.json`)
+
+          try {
+            fs.writeFileSync(tempCredentialsPath, JSON.stringify(gaCredentials.credentials))
+
+            const analyticsDataClient = new BetaAnalyticsDataClient({
+              keyFilename: tempCredentialsPath,
+            })
+
+            // Fetch metrics for last 30 days
+            const [response] = await analyticsDataClient.runReport({
+              property: `properties/${gaCredentials.propertyId}`,
+              dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+              dimensions: [{ name: 'date' }],
+              metrics: [
+                { name: 'activeUsers' },
+                { name: 'sessions' },
+                { name: 'screenPageViews' },
+              ],
+            })
+
+            // Fetch top pages
+            const [pagesResponse] = await analyticsDataClient.runReport({
+              property: `properties/${gaCredentials.propertyId}`,
+              dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+              dimensions: [{ name: 'pageTitle' }, { name: 'pagePath' }],
+              metrics: [
+                { name: 'screenPageViews' },
+                { name: 'activeUsers' },
+              ],
+              orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
+              limit: 5,
+            })
+
+            const trafficTrend = response.rows?.map(row => ({
+              date: row.dimensionValues?.[0]?.value || '',
+              users: parseInt(row.metricValues?.[0]?.value || '0'),
+              sessions: parseInt(row.metricValues?.[1]?.value || '0'),
+              pageViews: parseInt(row.metricValues?.[2]?.value || '0'),
+            })) || []
+
+            const topPages = pagesResponse.rows?.map(row => ({
+              page: row.dimensionValues?.[0]?.value || 'Unknown',
+              url: row.dimensionValues?.[1]?.value || '/',
+              pageViews: parseInt(row.metricValues?.[0]?.value || '0'),
+              users: parseInt(row.metricValues?.[1]?.value || '0'),
+            })) || []
+
+            const totalUsers = trafficTrend.reduce((sum, day) => sum + day.users, 0)
+            const totalSessions = trafficTrend.reduce((sum, day) => sum + day.sessions, 0)
+            const totalPageViews = trafficTrend.reduce((sum, day) => sum + day.pageViews, 0)
+
+            gaData = {
+              metrics: { totalUsers, totalSessions, totalPageViews },
+              topPages,
+              trafficTrend,
+            }
+
+            // Clean up temp file
+            if (fs.existsSync(tempCredentialsPath)) {
+              fs.unlinkSync(tempCredentialsPath)
+            }
+          } catch (gaError) {
+            console.error('Error fetching real GA data for chat:', gaError)
+            // Clean up temp file on error
+            if (fs.existsSync(tempCredentialsPath)) {
+              fs.unlinkSync(tempCredentialsPath)
+            }
+          }
+        }
       }
     } catch (error) {
-      console.error('Error reading GA data for chat:', error)
+      console.error('Error checking GA connection for chat:', error)
     }
 
     // Build context string
@@ -161,14 +236,13 @@ Content Optimization:
 - Average Technical SEO: ${avgTechnical}/100
 - Average Content Quality: ${avgContent}/100`
 
-    // Add GA data if available
+    // Add REAL GA data if available
     if (gaConnected && gaData && gaData.metrics) {
       contextStr += `\n\nGoogle Analytics (Last 30 Days):
 - Total Users: ${gaData.metrics.totalUsers?.toLocaleString() || 0}
 - Total Sessions: ${gaData.metrics.totalSessions?.toLocaleString() || 0}
 - Total Page Views: ${gaData.metrics.totalPageViews?.toLocaleString() || 0}
-- Pages per Session: ${gaData.metrics.totalSessions && gaData.metrics.totalPageViews ? (gaData.metrics.totalPageViews / gaData.metrics.totalSessions).toFixed(1) : 'N/A'}
-- Engagement Rate: ${gaData.metrics.engagementRate ? (gaData.metrics.engagementRate * 100).toFixed(1) + '%' : 'N/A'}`
+- Pages per Session: ${gaData.metrics.totalSessions && gaData.metrics.totalPageViews ? (gaData.metrics.totalPageViews / gaData.metrics.totalSessions).toFixed(1) : 'N/A'}`
 
       // Add top pages if available
       if (gaData.topPages && gaData.topPages.length > 0) {
@@ -178,7 +252,7 @@ Content Optimization:
         })
       }
     } else {
-      contextStr += `\n\nGoogle Analytics: Not connected or no data available`
+      contextStr += `\n\nGoogle Analytics: Not connected. User needs to connect GA in Settings to see traffic data.`
     }
 
     // Add recent monitoring results

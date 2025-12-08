@@ -18,12 +18,12 @@ interface ChatWidgetProps {
 }
 
 export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [isMinimized, setIsMinimized] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -32,9 +32,9 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
     }
   }, [messages])
 
-  // Welcome message
+  // Welcome message when first expanded
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (isExpanded && messages.length === 0) {
       setMessages([
         {
           role: "assistant",
@@ -43,7 +43,14 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
         }
       ])
     }
-  }, [isOpen, messages.length])
+  }, [isExpanded, messages.length])
+
+  // Focus input when expanded
+  useEffect(() => {
+    if (isExpanded && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [isExpanded])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -100,138 +107,142 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
     }
   }
 
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-110 flex items-center justify-center z-50"
-        aria-label="Open chat"
-      >
-        <MessageSquare className="h-6 w-6" />
-      </button>
-    )
-  }
-
-  if (isMinimized) {
-    return (
-      <div className="fixed bottom-6 right-6 z-50">
-        <button
-          onClick={() => setIsMinimized(false)}
-          className="flex items-center gap-2 bg-card border border-border rounded-full px-4 py-2 shadow-lg hover:shadow-xl transition-all"
-        >
-          <MessageSquare className="h-5 w-5 text-primary" />
-          <span className="text-sm font-medium">Chat Assistant</span>
-          {messages.length > 1 && (
-            <span className="ml-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {messages.length - 1}
-            </span>
-          )}
-        </button>
-      </div>
-    )
-  }
-
   return (
-    <Card className="fixed bottom-6 right-6 w-[420px] h-[650px] shadow-2xl z-50 flex flex-col border-2">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 pt-4 px-4 border-b bg-card">
-        <CardTitle className="text-lg flex items-center gap-2 font-semibold">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <MessageSquare className="h-4 w-4 text-primary" />
-          </div>
-          Chat Assistant
-        </CardTitle>
-        <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsMinimized(true)}
-            className="h-8 w-8 p-0 hover:bg-muted"
-          >
-            <Minimize2 className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsOpen(false)}
-            className="h-8 w-8 p-0 hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardHeader>
-
-      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden bg-background">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {messages.map((message, i) => (
-            <div
-              key={i}
-              className={cn(
-                "flex flex-col",
-                message.role === "user" ? "items-end" : "items-start"
-              )}
-            >
-              <div
-                className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-3",
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground rounded-br-md"
-                    : "bg-muted text-foreground rounded-bl-md"
-                )}
-              >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+    <>
+      {/* Expanded overlay - right side only, leaves left sidebar visible */}
+      {isExpanded && (
+        <div className="fixed top-0 right-0 bottom-0 left-64 bg-background z-50 flex flex-col">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                <MessageSquare className="h-4 w-4 text-gray-700" />
               </div>
-              <p className={cn(
-                "text-xs text-muted-foreground mt-1 px-1",
-                message.role === "user" ? "text-right" : "text-left"
-              )}>
-                {message.timestamp.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit"
-                })}
-              </p>
+              <span className="font-semibold text-base">Chat Assistant</span>
             </div>
-          ))}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                <span className="text-sm">Thinking...</span>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        <form onSubmit={handleSubmit} className="p-4 border-t bg-card">
-          <div className="flex gap-2 items-end">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask me anything about your data..."
-              className="min-h-[56px] max-h-[120px] resize-none flex-1 text-sm"
-              disabled={isLoading}
-            />
             <Button
-              type="submit"
+              variant="ghost"
               size="sm"
-              disabled={!input.trim() || isLoading}
-              className="h-[56px] w-[56px] flex-shrink-0"
+              onClick={() => setIsExpanded(false)}
+              className="h-8 w-8 p-0 hover:bg-gray-100"
             >
-              {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Send className="h-5 w-5" />
-              )}
+              <X className="h-4 w-4" />
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground mt-2 px-1">
-            Press Enter to send • Shift+Enter for new line
-          </p>
-        </form>
-      </CardContent>
-    </Card>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-6 py-6 max-w-3xl mx-auto w-full">
+            <div className="space-y-4">
+              {messages.map((message, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex flex-col",
+                    message.role === "user" ? "items-end" : "items-start"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "max-w-[80%] rounded-2xl px-4 py-3",
+                      message.role === "user"
+                        ? "bg-gray-900 text-white rounded-br-md"
+                        : "bg-gray-100 text-gray-900 rounded-bl-md"
+                    )}
+                  >
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  </div>
+                  <p className={cn(
+                    "text-xs text-muted-foreground mt-1 px-1",
+                    message.role === "user" ? "text-right" : "text-left"
+                  )}>
+                    {message.timestamp.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    })}
+                  </p>
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 rounded-2xl rounded-bl-md px-4 py-3 flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-700" />
+                    <span className="text-sm text-gray-700">Thinking...</span>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          {/* Fixed bottom input */}
+          <div className="border-t border-gray-200 bg-white px-6 py-4">
+            <form onSubmit={handleSubmit} className="max-w-3xl mx-auto w-full">
+              <div className="flex gap-2 items-end">
+                <Textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask me anything about your data..."
+                  className="min-h-[56px] max-h-[120px] resize-none flex-1 text-sm"
+                  disabled={isLoading}
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!input.trim() || isLoading}
+                  className="h-[56px] w-[56px] flex-shrink-0 bg-gray-900 hover:bg-gray-800"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Press Enter to send • Shift+Enter for new line
+              </p>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Fixed bottom input bar - spans main content area (left of sidebar) */}
+      {!isExpanded && (
+        <div className="fixed bottom-0 left-64 right-0 border-t border-gray-200 bg-white px-6 py-4 z-40">
+          <div className="max-w-3xl mx-auto w-full">
+            <form onSubmit={handleSubmit}>
+              <div className="flex gap-2 items-center">
+                <div className="flex-1 relative">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onFocus={() => setIsExpanded(true)}
+                    placeholder="Ask me anything about your data..."
+                    className="w-full px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                    disabled={isLoading}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!input.trim() || isLoading}
+                  className="h-[48px] w-[48px] flex-shrink-0 bg-gray-900 hover:bg-gray-800"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

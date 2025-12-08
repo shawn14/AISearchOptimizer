@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { BetaAnalyticsDataClient } from '@google-analytics/data'
 import { getGACredentials, updateGALastSynced } from '@/lib/firebase/storage'
+import { getSession } from '@/lib/auth/session'
 import os from 'os'
 import fs from 'fs'
 import path from 'path'
@@ -9,15 +10,17 @@ export async function GET(request: NextRequest) {
   let tempCredentialsPath: string | null = null
 
   try {
-    // Get user ID from session/auth (for now using header)
-    const userId = request.headers.get('x-user-id')
+    // Get user ID from session
+    const session = await getSession()
 
-    if (!userId) {
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: 'Unauthorized - User ID required' },
+        { error: 'Unauthorized - Please sign in' },
         { status: 401 }
       )
     }
+
+    const userId = session.user.id
 
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate') || '7daysAgo'

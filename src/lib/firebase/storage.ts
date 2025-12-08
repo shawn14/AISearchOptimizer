@@ -630,21 +630,22 @@ export interface GoogleAnalyticsConnection {
   last_synced_at?: Date
 }
 
-export async function saveGACredentials(userId: string, propertyId: string, credentialsJson: string): Promise<void> {
+export async function saveGACredentials(userId: string, data: { propertyId: string; credentials: any; lastSynced?: string }): Promise<void> {
   // Simple encryption (in production, use proper encryption library)
-  const encrypted = Buffer.from(credentialsJson).toString('base64')
+  const encrypted = Buffer.from(JSON.stringify(data.credentials)).toString('base64')
 
   const ref = db.collection(COLLECTIONS.USERS).doc(userId)
 
   await ref.update({
-    ga_property_id: propertyId,
+    ga_property_id: data.propertyId,
     ga_credentials: encrypted,
     ga_connected_at: Timestamp.now(),
+    ga_last_synced_at: data.lastSynced ? Timestamp.fromDate(new Date(data.lastSynced)) : Timestamp.now(),
     updated_at: Timestamp.now(),
   })
 }
 
-export async function getGACredentials(userId: string): Promise<{ propertyId: string; credentials: any } | null> {
+export async function getGACredentials(userId: string): Promise<{ propertyId: string; credentials: any; lastSynced?: string } | null> {
   const doc = await db.collection(COLLECTIONS.USERS).doc(userId).get()
 
   if (!doc.exists) {
@@ -664,6 +665,7 @@ export async function getGACredentials(userId: string): Promise<{ propertyId: st
   return {
     propertyId: data.ga_property_id,
     credentials,
+    lastSynced: data.ga_last_synced_at ? data.ga_last_synced_at.toDate().toISOString() : undefined,
   }
 }
 
@@ -673,7 +675,7 @@ export async function updateGALastSynced(userId: string): Promise<void> {
   })
 }
 
-export async function deleteGAConnection(userId: string): Promise<void> {
+export async function deleteGACredentials(userId: string): Promise<void> {
   await db.collection(COLLECTIONS.USERS).doc(userId).update({
     ga_property_id: FieldValue.delete(),
     ga_credentials: FieldValue.delete(),
