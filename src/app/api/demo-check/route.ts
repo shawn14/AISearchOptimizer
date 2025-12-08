@@ -27,21 +27,20 @@ export async function POST(request: NextRequest) {
 
     // Analyze each platform's response
     const platformResults = results.map(result => {
-      const yourBrandAnalysis = analyzeBrandMention(result.response, brandName)
-      const competitorAnalysis = analyzeBrandMention(result.response, competitor)
+      const yourBrandAnalysis = analyzeBrandMention(result.text, brandName)
+      const competitorAnalysis = analyzeBrandMention(result.text, competitor)
 
       return {
         platform: result.platform,
         query,
-        response: result.response,
+        response: result.text,
         yourBrand: yourBrandAnalysis,
         competitor: competitorAnalysis,
-        error: result.error,
       }
     })
 
-    // If all platforms failed, return error
-    if (platformResults.every(r => r.error)) {
+    // If no results returned, return error
+    if (platformResults.length === 0) {
       return NextResponse.json(
         { error: "Failed to query AI platforms. Please try again." },
         { status: 500 }
