@@ -13,8 +13,7 @@ interface TrafficData {
     visits: number
     clicks: number
     ctr: number
-    avgTimeOnPage: number
-    bounceRate: number
+    avgProminence: number
   }>
   trafficTrend: Array<{
     date: string
@@ -136,6 +135,13 @@ export default function TrafficPage() {
     const minutes = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${minutes}m ${secs}s`
+  }
+
+  const formatProminence = (score: number) => {
+    if (score >= 80) return { label: 'Excellent', color: 'text-green-600' }
+    if (score >= 60) return { label: 'Good', color: 'text-blue-600' }
+    if (score >= 40) return { label: 'Fair', color: 'text-yellow-600' }
+    return { label: 'Low', color: 'text-red-600' }
   }
 
   return (
@@ -332,23 +338,28 @@ export default function TrafficPage() {
                   <th className="text-right py-3 px-4 font-medium">Mentions</th>
                   <th className="text-right py-3 px-4 font-medium">High-Prominence</th>
                   <th className="text-right py-3 px-4 font-medium">Rate</th>
-                  <th className="text-right py-3 px-4 font-medium">Avg. Time</th>
-                  <th className="text-right py-3 px-4 font-medium">Engagement</th>
+                  <th className="text-right py-3 px-4 font-medium">Avg. Prominence</th>
+                  <th className="text-right py-3 px-4 font-medium">Quality</th>
                 </tr>
               </thead>
               <tbody>
-                {data.trafficByPlatform.map((platform) => (
-                  <tr key={platform.platform} className="border-b">
-                    <td className="py-3 px-4">
-                      <Badge variant="outline">{platform.platform}</Badge>
-                    </td>
-                    <td className="text-right py-3 px-4">{platform.visits.toLocaleString()}</td>
-                    <td className="text-right py-3 px-4">{platform.clicks.toLocaleString()}</td>
-                    <td className="text-right py-3 px-4">{platform.ctr}%</td>
-                    <td className="text-right py-3 px-4">{formatTime(platform.avgTimeOnPage)}</td>
-                    <td className="text-right py-3 px-4">{(100 - platform.bounceRate).toFixed(1)}%</td>
-                  </tr>
-                ))}
+                {data.trafficByPlatform.map((platform) => {
+                  const prominence = formatProminence(platform.avgProminence)
+                  return (
+                    <tr key={platform.platform} className="border-b">
+                      <td className="py-3 px-4">
+                        <Badge variant="outline">{platform.platform}</Badge>
+                      </td>
+                      <td className="text-right py-3 px-4">{platform.visits.toLocaleString()}</td>
+                      <td className="text-right py-3 px-4">{platform.clicks.toLocaleString()}</td>
+                      <td className="text-right py-3 px-4">{platform.ctr}%</td>
+                      <td className="text-right py-3 px-4">{platform.avgProminence}/100</td>
+                      <td className="text-right py-3 px-4">
+                        <span className={prominence.color}>{prominence.label}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -368,8 +379,8 @@ export default function TrafficPage() {
             <li>• <strong>Mentions:</strong> How many times your brand appeared in AI responses</li>
             <li>• <strong>High-Prominence:</strong> Mentions with visibility score above 50%</li>
             <li>• <strong>Rate:</strong> Percentage of high-prominence mentions</li>
-            <li>• <strong>Avg. Time:</strong> Estimated engagement duration (simulated)</li>
-            <li>• <strong>Engagement:</strong> Inverse of bounce rate (simulated)</li>
+            <li>• <strong>Avg. Prominence:</strong> Average visibility score (0-100) across all mentions</li>
+            <li>• <strong>Quality:</strong> Rating based on prominence score (Excellent: 80+, Good: 60+, Fair: 40+, Low: &lt;40)</li>
           </ul>
           <p className="text-sm text-muted-foreground mt-4">
             Data is collected from your brand monitoring runs across AI platforms.

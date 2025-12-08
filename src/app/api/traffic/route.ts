@@ -94,14 +94,14 @@ export async function GET(request: NextRequest) {
       const visits = stats.mentions
       const clicks = stats.citations
       const ctr = visits > 0 ? ((clicks / visits) * 100) : 0
+      const avgProminence = stats.mentions > 0 ? Math.round(stats.totalProminence / stats.mentions) : 0
 
       return {
         platform,
         visits,
         clicks,
         ctr: parseFloat(ctr.toFixed(1)),
-        avgTimeOnPage: Math.floor(120 + Math.random() * 60), // 2-3 minutes (randomized for realism)
-        bounceRate: parseFloat((35 + Math.random() * 20).toFixed(1)), // 35-55% (randomized)
+        avgProminence, // Real metric: average prominence score
       }
     }).filter(p => p.visits > 0) // Only show platforms with activity
 

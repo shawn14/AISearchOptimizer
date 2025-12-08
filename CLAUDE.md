@@ -169,6 +169,35 @@ Visibility scores are composite metrics calculated from:
 
 ## Important Implementation Notes
 
+### CRITICAL: NO FAKE DATA POLICY
+**NEVER use fake, mock, simulated, or placeholder data in this application.**
+
+This is a fundamental rule that must be followed at all times:
+- ❌ NO hardcoded sample data in API responses
+- ❌ NO simulated metrics or calculated fake values
+- ❌ NO placeholder data for demonstrations
+- ❌ NO mock timestamps or fabricated numbers
+- ✅ ONLY use real data from actual monitoring runs, database queries, or API integrations
+- ✅ If no real data exists, display empty states with helpful messaging
+- ✅ When building new features, connect to real data sources immediately
+
+**Why this matters:**
+- This platform provides business intelligence for brand visibility
+- Users make strategic decisions based on our analytics
+- Fake data destroys trust and credibility
+- Mock data can accidentally ship to production
+
+**Examples of violations:**
+- Showing "2m 34s" average time on page for all platforms (web analytics concepts don't apply to AI mentions)
+- Hardcoded bounce rates like "42.5%" across all entries
+- Sample data arrays with fabricated values
+- Simulated trend data that doesn't reflect actual database state
+
+**If you're tempted to use fake data, STOP and instead:**
+1. Connect to the real data source (monitoring runs, Firebase, Google Analytics)
+2. Show an empty state if no data exists yet
+3. Add helpful messaging explaining how to generate real data
+
 ### AI API Integration
 - **Parallel Execution**: Query all AI platforms simultaneously to reduce latency
 - **Rate Limiting**: Implement per-platform rate limits with exponential backoff
