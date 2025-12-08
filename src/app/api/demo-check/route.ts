@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import OpenAI from "openai"
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+import { queryAllPlatforms, analyzeBrandMention as analyzeMention } from "@/lib/ai-clients"
+import { AIPlatform } from "@/types"
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,33 +14,49 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate a relevant query based on the industry
-    const query = `What are the best ${industry} solutions for businesses?`
+    const query = `What are the best ${industry} solutions for businesses? Please provide a comprehensive list with brief descriptions.`
 
-    // Query ChatGPT
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "user",
-          content: query,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 800,
+    // Query all platforms: ChatGPT, Perplexity, and Grok
+    // Note: Claude and Gemini can be added but may have rate limits
+    const platforms: AIPlatform[] = ['chatgpt', 'perplexity', 'grok']
+
+    console.log(`Running demo check for: ${brandName} vs ${competitor} in ${industry}`)
+    console.log(`Platforms: ${platforms.join(', ')}`)
+
+    const results = await queryAllPlatforms(query, platforms)
+
+    // Analyze each platform's response
+    const platformResults = results.map(result => {
+      const yourBrandAnalysis = analyzeBrandMention(result.response, brandName)
+      const competitorAnalysis = analyzeBrandMention(result.response, competitor)
+
+      return {
+        platform: result.platform,
+        query,
+        response: result.response,
+        yourBrand: yourBrandAnalysis,
+        competitor: competitorAnalysis,
+        error: result.error,
+      }
     })
 
-    const response = completion.choices[0]?.message?.content || ""
+    // If all platforms failed, return error
+    if (platformResults.every(r => r.error)) {
+      return NextResponse.json(
+        { error: "Failed to query AI platforms. Please try again." },
+        { status: 500 }
+      )
+    }
 
-    // Analyze mentions
-    const yourBrandAnalysis = analyzeBrandMention(response, brandName)
-    const competitorAnalysis = analyzeBrandMention(response, competitor)
-
+    // Return results from all platforms
     return NextResponse.json({
       query,
-      response,
-      yourBrand: yourBrandAnalysis,
-      competitor: competitorAnalysis,
-      platform: "ChatGPT",
+      platforms: platformResults,
+      summary: {
+        totalPlatforms: platformResults.length,
+        yourBrandMentions: platformResults.filter(r => r.yourBrand.mentioned).length,
+        competitorMentions: platformResults.filter(r => r.competitor.mentioned).length,
+      }
     })
   } catch (error: any) {
     console.error("Demo check error:", error)

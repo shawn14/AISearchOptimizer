@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Loader2, Search, CheckCircle2, XCircle, TrendingUp, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-interface DemoResult {
+interface PlatformResult {
+  platform: string
   query: string
   response: string
   yourBrand: {
@@ -21,7 +22,17 @@ interface DemoResult {
     prominence: number
     context?: string
   }
-  platform: string
+  error?: string
+}
+
+interface DemoResult {
+  query: string
+  platforms: PlatformResult[]
+  summary: {
+    totalPlatforms: number
+    yourBrandMentions: number
+    competitorMentions: number
+  }
 }
 
 export function InteractiveDemo() {
@@ -31,6 +42,7 @@ export function InteractiveDemo() {
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<DemoResult | null>(null)
   const [error, setError] = useState("")
+  const [selectedPlatform, setSelectedPlatform] = useState(0)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -156,7 +168,7 @@ export function InteractiveDemo() {
             </Button>
 
             <p className="text-xs text-gray-500 text-center mt-4">
-              No credit card required • Results in ~10 seconds • Powered by ChatGPT
+              No credit card required • Results in ~10-15 seconds • Powered by ChatGPT, Perplexity & Grok
             </p>
           </form>
         )}
@@ -164,132 +176,167 @@ export function InteractiveDemo() {
         {/* Results */}
         {result && (
           <div className="space-y-6">
-            {/* Comparison Cards */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Your Brand */}
-              <div
-                className={cn(
-                  "border-2 rounded-2xl p-6 shadow-lg",
-                  result.yourBrand.mentioned
-                    ? "bg-green-50 border-green-500"
-                    : "bg-orange-50 border-orange-500"
-                )}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-900">{brandName}</h3>
-                  {result.yourBrand.mentioned ? (
-                    <CheckCircle2 className="h-6 w-6 text-green-600" />
-                  ) : (
-                    <XCircle className="h-6 w-6 text-orange-600" />
-                  )}
+            {/* Summary Stats */}
+            <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-lg">
+              <div className="grid grid-cols-3 gap-6 text-center">
+                <div>
+                  <div className="text-3xl font-bold text-gray-900">{result.summary.totalPlatforms}</div>
+                  <div className="text-sm text-gray-600">AI Platforms</div>
                 </div>
-
-                {result.yourBrand.mentioned ? (
-                  <div>
-                    <div className="mb-2">
-                      <span className="text-3xl font-bold text-gray-900">
-                        #{result.yourBrand.position || "?"}
-                      </span>
-                      <span className="text-sm text-gray-600 ml-2">position</span>
-                    </div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-green-500 rounded-full"
-                          style={{ width: `${result.yourBrand.prominence}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-700">
-                        {result.yourBrand.prominence}% prominence
-                      </span>
-                    </div>
-                    {result.yourBrand.context && (
-                      <p className="text-sm text-gray-700 bg-white/50 rounded-lg p-3 italic">
-                        "{result.yourBrand.context.substring(0, 120)}..."
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-lg font-semibold text-orange-700 mb-2">Not mentioned</p>
-                    <p className="text-sm text-gray-700">
-                      Your brand wasn't found in the AI response. This is a major opportunity to improve your visibility.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Competitor */}
-              <div
-                className={cn(
-                  "border-2 rounded-2xl p-6 shadow-lg",
-                  result.competitor.mentioned
-                    ? "bg-red-50 border-red-300"
-                    : "bg-gray-50 border-gray-300"
-                )}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-900">{competitor}</h3>
-                  {result.competitor.mentioned ? (
-                    <CheckCircle2 className="h-6 w-6 text-red-600" />
-                  ) : (
-                    <XCircle className="h-6 w-6 text-gray-400" />
-                  )}
+                <div>
+                  <div className="text-3xl font-bold text-green-600">{result.summary.yourBrandMentions}</div>
+                  <div className="text-sm text-gray-600">Your Mentions</div>
                 </div>
-
-                {result.competitor.mentioned ? (
-                  <div>
-                    <div className="mb-2">
-                      <span className="text-3xl font-bold text-gray-900">
-                        #{result.competitor.position || "?"}
-                      </span>
-                      <span className="text-sm text-gray-600 ml-2">position</span>
-                    </div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-red-500 rounded-full"
-                          style={{ width: `${result.competitor.prominence}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-700">
-                        {result.competitor.prominence}% prominence
-                      </span>
-                    </div>
-                    {result.competitor.context && (
-                      <p className="text-sm text-gray-700 bg-white/50 rounded-lg p-3 italic">
-                        "{result.competitor.context.substring(0, 120)}..."
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-lg font-semibold text-gray-700 mb-2">Not mentioned</p>
-                    <p className="text-sm text-gray-600">
-                      Your competitor also wasn't found in this AI response.
-                    </p>
-                  </div>
-                )}
+                <div>
+                  <div className="text-3xl font-bold text-red-600">{result.summary.competitorMentions}</div>
+                  <div className="text-sm text-gray-600">Competitor Mentions</div>
+                </div>
               </div>
             </div>
 
-            {/* AI Response Preview */}
-            <div className="bg-white border-2 border-gray-200 rounded-2xl p-6 shadow-lg">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-emerald-600 to-teal-600 flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">AI</span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">AI Response to:</p>
-                  <p className="font-semibold text-gray-900">"{result.query}"</p>
-                </div>
+            {/* Platform Tabs */}
+            <div className="bg-white border-2 border-gray-200 rounded-2xl shadow-lg overflow-hidden">
+              <div className="flex border-b border-gray-200">
+                {result.platforms.map((platform, idx) => (
+                  <button
+                    key={platform.platform}
+                    onClick={() => setSelectedPlatform(idx)}
+                    className={cn(
+                      "flex-1 px-6 py-4 font-semibold text-sm transition-colors",
+                      selectedPlatform === idx
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                    )}
+                  >
+                    {platform.platform === 'chatgpt' && 'ChatGPT'}
+                    {platform.platform === 'perplexity' && 'Perplexity'}
+                    {platform.platform === 'grok' && 'Grok'}
+                    {platform.platform === 'claude' && 'Claude'}
+                    {platform.platform === 'gemini' && 'Gemini'}
+                  </button>
+                ))}
               </div>
-              <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {result.response}
-                </p>
-              </div>
-              <p className="text-xs text-gray-500 mt-3">Platform: {result.platform}</p>
+
+              {/* Current Platform Results */}
+              {result.platforms[selectedPlatform] && (
+                <div className="p-6">
+                  <div className="grid md:grid-cols-2 gap-6 mb-6">
+                    {/* Your Brand */}
+                    <div
+                      className={cn(
+                        "border-2 rounded-2xl p-6 shadow-lg",
+                        result.platforms[selectedPlatform].yourBrand.mentioned
+                          ? "bg-green-50 border-green-500"
+                          : "bg-orange-50 border-orange-500"
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-900">{brandName}</h3>
+                        {result.platforms[selectedPlatform].yourBrand.mentioned ? (
+                          <CheckCircle2 className="h-6 w-6 text-green-600" />
+                        ) : (
+                          <XCircle className="h-6 w-6 text-orange-600" />
+                        )}
+                      </div>
+
+                      {result.platforms[selectedPlatform].yourBrand.mentioned ? (
+                        <div>
+                          <div className="mb-2">
+                            <span className="text-3xl font-bold text-gray-900">
+                              #{result.platforms[selectedPlatform].yourBrand.position || "?"}
+                            </span>
+                            <span className="text-sm text-gray-600 ml-2">position</span>
+                          </div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-green-500 rounded-full"
+                                style={{ width: `${result.platforms[selectedPlatform].yourBrand.prominence}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm font-medium text-gray-700">
+                              {result.platforms[selectedPlatform].yourBrand.prominence}%
+                            </span>
+                          </div>
+                          {result.platforms[selectedPlatform].yourBrand.context && (
+                            <p className="text-sm text-gray-700 bg-white/50 rounded-lg p-3 italic">
+                              "{result.platforms[selectedPlatform].yourBrand.context.substring(0, 120)}..."
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-lg font-semibold text-orange-700 mb-2">Not mentioned</p>
+                          <p className="text-sm text-gray-700">
+                            Not found in this platform's response.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Competitor */}
+                    <div
+                      className={cn(
+                        "border-2 rounded-2xl p-6 shadow-lg",
+                        result.platforms[selectedPlatform].competitor.mentioned
+                          ? "bg-red-50 border-red-300"
+                          : "bg-gray-50 border-gray-300"
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-bold text-gray-900">{competitor}</h3>
+                        {result.platforms[selectedPlatform].competitor.mentioned ? (
+                          <CheckCircle2 className="h-6 w-6 text-red-600" />
+                        ) : (
+                          <XCircle className="h-6 w-6 text-gray-400" />
+                        )}
+                      </div>
+
+                      {result.platforms[selectedPlatform].competitor.mentioned ? (
+                        <div>
+                          <div className="mb-2">
+                            <span className="text-3xl font-bold text-gray-900">
+                              #{result.platforms[selectedPlatform].competitor.position || "?"}
+                            </span>
+                            <span className="text-sm text-gray-600 ml-2">position</span>
+                          </div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-red-500 rounded-full"
+                                style={{ width: `${result.platforms[selectedPlatform].competitor.prominence}%` }}
+                        ></div>
+                      </div>
+                            <span className="text-sm font-medium text-gray-700">
+                              {result.platforms[selectedPlatform].competitor.prominence}%
+                            </span>
+                          </div>
+                          {result.platforms[selectedPlatform].competitor.context && (
+                            <p className="text-sm text-gray-700 bg-white/50 rounded-lg p-3 italic">
+                              "{result.platforms[selectedPlatform].competitor.context.substring(0, 120)}..."
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-lg font-semibold text-gray-700 mb-2">Not mentioned</p>
+                          <p className="text-sm text-gray-600">
+                            Not found in this platform's response.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* AI Response Preview */}
+                  <div className="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                    <p className="text-xs font-medium text-gray-500 mb-2">Full AI Response:</p>
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                      {result.platforms[selectedPlatform].response}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* CTA */}
@@ -297,7 +344,7 @@ export function InteractiveDemo() {
               <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-90" />
               <h3 className="text-2xl font-bold mb-3">Want to Track This Daily?</h3>
               <p className="text-blue-100 mb-6 max-w-xl mx-auto">
-                Get continuous monitoring across ChatGPT, Google AI Overview, and Perplexity.
+                Get continuous monitoring across ChatGPT, Perplexity, Grok, Claude & Gemini.
                 See exactly when your rankings change and get AI-powered recommendations to climb higher.
               </p>
               <Button
