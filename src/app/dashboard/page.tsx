@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, Activity, Target, Loader2, Sparkles, Users, MousePointer, BarChart3, Eye, Play, Star, Brain, MessageSquare, Search, Zap } from "lucide-react"
+import { TrendingUp, Activity, Target, Loader2, Sparkles, Users, MousePointer, BarChart3, Eye, Play, Star, Brain, MessageSquare, Search, Zap, RefreshCw, Lightbulb, AlertTriangle, CheckCircle } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, Area, AreaChart } from 'recharts'
 
 interface MonitoringRun {
@@ -46,6 +46,8 @@ export default function DashboardPage() {
   const [monitoringStatus, setMonitoringStatus] = useState<string | null>(null)
   const [primaryBrand, setPrimaryBrand] = useState<Brand | null>(null)
   const [showAllBrands, setShowAllBrands] = useState(false)
+  const [insights, setInsights] = useState<any>(null)
+  const [generatingInsights, setGeneratingInsights] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -160,6 +162,65 @@ export default function DashboardPage() {
       setTimeout(() => setMonitoringStatus(null), 5000)
     } finally {
       setMonitoring(false)
+    }
+  }
+
+  async function generateInsights() {
+    try {
+      setGeneratingInsights(true)
+
+      // Calculate sentiment breakdown
+      const sentimentBreakdown = allMentions.reduce((acc, mention) => {
+        acc[mention.sentiment] = (acc[mention.sentiment] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+
+      // Build metrics object
+      const metrics = {
+        brandName: primaryBrand?.name || 'Your Brand',
+        industry: null, // Could get from brand data if available
+        avgVisibilityScore,
+        totalMentions,
+        totalQueriesTested,
+        platformStats,
+        recentMentionsCount: allMentions.length,
+        sentimentBreakdown: {
+          positive: sentimentBreakdown['positive'] || 0,
+          neutral: sentimentBreakdown['neutral'] || 0,
+          negative: sentimentBreakdown['negative'] || 0
+        },
+        avgTechnicalScore: avgTechnical,
+        avgContentScore: avgContent,
+        avgAEOScore: avgAEO,
+        auditsCount: audits.length,
+        gaConnected,
+        totalUsers: gaData?.metrics?.totalUsers,
+        totalSessions: gaData?.metrics?.totalSessions,
+        totalPageViews: gaData?.metrics?.totalPageViews
+      }
+
+      const response = await fetch('/api/insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(metrics)
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate insights')
+      }
+
+      const data = await response.json()
+      setInsights(data)
+    } catch (error) {
+      console.error('Failed to generate insights:', error)
+      setInsights({
+        summary: 'Failed to generate insights. Please try again.',
+        opportunities: [],
+        concerns: [],
+        recommendations: []
+      })
+    } finally {
+      setGeneratingInsights(false)
     }
   }
 
@@ -463,6 +524,136 @@ export default function DashboardPage() {
                   )
                 })}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* AI-Powered Insights */}
+      {monitoringRuns.length > 0 && (
+        <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Brain className="h-5 w-5 text-purple-600" />
+                </div>
+                <div>
+                  <CardTitle>AI Insights</CardTitle>
+                  <CardDescription>Strategic analysis of your LLM visibility powered by Claude Sonnet</CardDescription>
+                </div>
+              </div>
+              <Button
+                onClick={generateInsights}
+                disabled={generatingInsights}
+                variant="outline"
+                size="sm"
+                className="gap-2"
+              >
+                {generatingInsights ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4" />
+                    Generate Insights
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {!insights && !generatingInsights && (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="mb-2">Click "Generate Insights" to get AI-powered analysis of your dashboard metrics</p>
+                <p className="text-sm">Analyzes visibility, traffic, sentiment, and provides strategic recommendations</p>
+              </div>
+            )}
+
+            {generatingInsights && (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">Claude is analyzing your metrics...</p>
+                </div>
+              </div>
+            )}
+
+            {insights && !generatingInsights && (
+              <div className="space-y-6">
+                {/* Executive Summary */}
+                <div className="p-4 bg-white rounded-lg border">
+                  <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-purple-600" />
+                    Executive Summary
+                  </h3>
+                  <p className="text-sm leading-relaxed">{insights.summary}</p>
+                </div>
+
+                {/* Opportunities */}
+                {insights.opportunities && insights.opportunities.length > 0 && (
+                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2 text-green-900">
+                      <Lightbulb className="h-4 w-4" />
+                      Opportunities ({insights.opportunities.length})
+                    </h3>
+                    <ul className="space-y-2">
+                      {insights.opportunities.map((opp: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm">
+                          <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          <span>{opp}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Concerns */}
+                {insights.concerns && insights.concerns.length > 0 && (
+                  <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2 text-amber-900">
+                      <AlertTriangle className="h-4 w-4" />
+                      Areas of Concern ({insights.concerns.length})
+                    </h3>
+                    <ul className="space-y-2">
+                      {insights.concerns.map((concern: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                          <span>{concern}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Recommendations */}
+                {insights.recommendations && insights.recommendations.length > 0 && (
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 className="font-semibold text-sm mb-3 flex items-center gap-2 text-blue-900">
+                      <Target className="h-4 w-4" />
+                      Strategic Recommendations ({insights.recommendations.length})
+                    </h3>
+                    <ul className="space-y-2">
+                      {insights.recommendations.map((rec: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm">
+                          <div className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold mt-0.5">
+                            {idx + 1}
+                          </div>
+                          <span>{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {insights.cost && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Analysis cost: ${insights.cost.toFixed(4)}
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
