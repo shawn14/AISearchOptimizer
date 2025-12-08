@@ -14,11 +14,15 @@ export async function GET(request: NextRequest) {
     }
 
     // Create OAuth2 client
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`
+
     const oauth2Client = new OAuth2Client(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/api/auth/google/callback`
+      redirectUri
     )
+
+    console.log('Generating OAuth URL with redirect_uri:', redirectUri)
 
     // Generate the auth URL
     const authUrl = oauth2Client.generateAuthUrl({
@@ -26,6 +30,7 @@ export async function GET(request: NextRequest) {
       scope: [
         'https://www.googleapis.com/auth/analytics.readonly',
       ],
+      redirect_uri: redirectUri, // Explicitly set redirect_uri
       // Store user ID in state to retrieve after callback
       state: session.userId,
       prompt: 'consent', // Force consent screen to get refresh token

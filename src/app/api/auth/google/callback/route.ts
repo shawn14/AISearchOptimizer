@@ -13,23 +13,25 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('OAuth error:', error)
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/dashboard/settings?error=oauth_failed`
+        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings?error=oauth_failed`
       )
     }
 
     if (!code || !state) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/dashboard/settings?error=missing_code`
+        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings?error=missing_code`
       )
     }
 
     const userId = state
 
     // Exchange code for tokens
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`
+
     const oauth2Client = new OAuth2Client(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/api/auth/google/callback`
+      redirectUri
     )
 
     const { tokens } = await oauth2Client.getToken(code)
@@ -69,16 +71,17 @@ export async function GET(request: NextRequest) {
     })
 
     // Redirect back to settings with success
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const redirectUrl = properties.length > 0
-      ? `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/dashboard/settings?oauth=success&properties=${encodeURIComponent(JSON.stringify(properties))}`
-      : `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/dashboard/settings?oauth=success`
+      ? `${baseUrl}/dashboard/settings?oauth=success&properties=${encodeURIComponent(JSON.stringify(properties))}`
+      : `${baseUrl}/dashboard/settings?oauth=success`
 
     return NextResponse.redirect(redirectUrl)
 
   } catch (error) {
     console.error('Error in OAuth callback:', error)
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3001'}/dashboard/settings?error=oauth_failed`
+      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings?error=oauth_failed`
     )
   }
 }
