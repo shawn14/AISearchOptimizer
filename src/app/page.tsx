@@ -28,13 +28,13 @@ export const metadata: Metadata = {
     title: "RevIntel - AI Search Intelligence Platform",
     description: "Monitor your brand's visibility across ChatGPT, Claude, Perplexity, and Gemini. Get AI-powered recommendations to improve your Answer Engine Optimization.",
     type: "website",
-    url: "https://revintel.ai",
+    url: "https://www.revintel.io",
     images: [
       {
-        url: "/og-image.png",
+        url: "https://www.revintel.io/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "RevIntel Dashboard - AI Search Intelligence Platform"
+        alt: "RevIntel - AI Search Intelligence Platform"
       }
     ]
   },
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "RevIntel - AI Search Intelligence Platform",
     description: "Monitor your brand's visibility across ChatGPT, Claude, Perplexity, and Gemini.",
-    images: ["/twitter-image.png"]
+    images: ["https://www.revintel.io/twitter-image"]
   }
 };
 
