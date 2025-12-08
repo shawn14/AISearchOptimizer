@@ -152,7 +152,7 @@ async function queryPlatform(
         response = await queryClaude(query, 'claude-3-haiku-20240307')
         break
       case 'gemini':
-        response = await queryGemini(query, 'gemini-1.5-flash')
+        response = await queryGemini(query, 'gemini-2.5-flash-lite') // Cheapest model
         break
       case 'perplexity':
         response = await queryPerplexity(query, 'sonar')

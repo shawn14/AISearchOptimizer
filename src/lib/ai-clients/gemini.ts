@@ -5,7 +5,7 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY!)
 
 export async function queryGemini(
   prompt: string,
-  model: string = 'gemini-1.5-flash'
+  model: string = 'gemini-2.5-flash-lite'
 ): Promise<AIClientResponse> {
   const startTime = Date.now()
 
@@ -52,13 +52,16 @@ export async function queryGemini(
 }
 
 function calculateGeminiCost(model: string, inputTokens: number, outputTokens: number): number {
-  // Gemini pricing as of 2024 - update as needed
+  // Gemini pricing as of December 2025
   const pricing: Record<string, { input: number; output: number }> = {
+    'gemini-2.5-flash-lite': { input: 0.10 / 1_000_000, output: 0.40 / 1_000_000 }, // Cheapest option
+    'gemini-2.5-flash': { input: 0.30 / 1_000_000, output: 2.50 / 1_000_000 },
     'gemini-1.5-pro': { input: 1.25 / 1_000_000, output: 5 / 1_000_000 },
     'gemini-1.5-flash': { input: 0.075 / 1_000_000, output: 0.3 / 1_000_000 },
+    'gemini-pro': { input: 0.5 / 1_000_000, output: 1.5 / 1_000_000 },
   }
 
-  const modelKey = Object.keys(pricing).find(key => model.includes(key)) || 'gemini-1.5-flash'
+  const modelKey = Object.keys(pricing).find(key => model.includes(key)) || 'gemini-2.5-flash-lite'
   const rates = pricing[modelKey]
 
   return (inputTokens * rates.input) + (outputTokens * rates.output)

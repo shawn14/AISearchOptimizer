@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, Activity, Target, Loader2, Sparkles, Users, MousePointer, BarChart3, Eye, Play, Star } from "lucide-react"
+import { TrendingUp, Activity, Target, Loader2, Sparkles, Users, MousePointer, BarChart3, Eye, Play, Star, Brain, MessageSquare, Search, Zap } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, Area, AreaChart } from 'recharts'
 
 interface MonitoringRun {
@@ -201,9 +201,34 @@ export default function DashboardPage() {
           query: r.query,
           context: r.context,
           timestamp: run.timestamp,
-          brand: run.brand_name
+          brand: run.brand_name,
+          prominence_score: r.prominence_score || 0,
+          sentiment: r.sentiment || 'neutral'
         }))
     )
+
+  // Calculate platform-specific metrics
+  const platformStats = latestRuns.reduce((acc, run) => {
+    if (run.individual_results) {
+      run.individual_results.forEach((result: any) => {
+        const platform = result.platform
+        if (!acc[platform]) {
+          acc[platform] = { total: 0, mentions: 0, visibility: 0 }
+        }
+        acc[platform].total++
+        if (result.mentioned) {
+          acc[platform].mentions++
+        }
+      })
+    }
+    return acc
+  }, {} as Record<string, { total: number; mentions: number; visibility: number }>)
+
+  // Calculate visibility percentage for each platform
+  Object.keys(platformStats).forEach(platform => {
+    const stats = platformStats[platform]
+    stats.visibility = stats.total > 0 ? Math.round((stats.mentions / stats.total) * 100) : 0
+  })
 
   // Filter mentions based on showAllBrands toggle
   const recentMentions = (showAllBrands
@@ -259,7 +284,7 @@ export default function DashboardPage() {
             )}
           </div>
           <p className="text-muted-foreground">
-            Overview of your AI search visibility
+            Track your brand visibility across ChatGPT, Claude, Perplexity, Gemini & Grok
           </p>
         </div>
         <Button onClick={runMonitoring} disabled={monitoring} size="lg" className="gap-2">
@@ -301,14 +326,14 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Visibility Score
+              Overall Visibility
             </CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{avgVisibilityScore}/100</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Based on {latestRuns.length} recent monitoring {latestRuns.length === 1 ? 'run' : 'runs'}
+              Across all AI platforms
             </p>
           </CardContent>
         </Card>
@@ -394,6 +419,53 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      {/* Platform-Specific Visibility Breakdown */}
+      {Object.keys(platformStats).length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>LLM Visibility Breakdown</CardTitle>
+            <CardDescription>Your brand performance across each AI platform</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+              {Object.entries(platformStats)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([platform, stats]) => {
+                  const platformConfig = {
+                    chatgpt: { icon: MessageSquare, color: 'text-green-600', bgColor: 'bg-green-50', name: 'ChatGPT' },
+                    claude: { icon: Brain, color: 'text-orange-600', bgColor: 'bg-orange-50', name: 'Claude' },
+                    perplexity: { icon: Search, color: 'text-blue-600', bgColor: 'bg-blue-50', name: 'Perplexity' },
+                    gemini: { icon: Sparkles, color: 'text-purple-600', bgColor: 'bg-purple-50', name: 'Gemini' },
+                    grok: { icon: Zap, color: 'text-pink-600', bgColor: 'bg-pink-50', name: 'Grok' }
+                  }[platform.toLowerCase()] || { icon: Activity, color: 'text-gray-600', bgColor: 'bg-gray-50', name: platform }
+
+                  const Icon = platformConfig.icon
+
+                  return (
+                    <div key={platform} className={`p-4 rounded-lg border ${platformConfig.bgColor}`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Icon className={`h-5 w-5 ${platformConfig.color}`} />
+                        <span className="font-semibold text-sm">{platformConfig.name}</span>
+                      </div>
+                      <div className="space-y-2">
+                        <div>
+                          <div className={`text-3xl font-bold ${platformConfig.color}`}>
+                            {stats.visibility}%
+                          </div>
+                          <p className="text-xs text-muted-foreground">Visibility</p>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {stats.mentions} of {stats.total} queries
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Additional GA Metrics Row */}
       {gaConnected && gaData && (
@@ -679,8 +751,8 @@ export default function DashboardPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Recent Brand Mentions</CardTitle>
-                <CardDescription>Latest mentions across AI platforms</CardDescription>
+                <CardTitle>Recent Brand Mentions in LLMs</CardTitle>
+                <CardDescription>How AI platforms are responding to queries about your brand</CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -702,24 +774,61 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {recentMentions.map((mention, i) => (
-                <div key={i} className="flex gap-4 border-b pb-4 last:border-0">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline">
-                        <Sparkles className="h-3 w-3 mr-1" />
-                        {mention.platform}
-                      </Badge>
-                      <span className="text-sm font-medium">{mention.brand}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {new Date(mention.timestamp).toLocaleDateString()}
-                      </span>
+              {recentMentions.map((mention, i) => {
+                const platformConfig = {
+                  chatgpt: { icon: MessageSquare, color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-200', name: 'ChatGPT' },
+                  claude: { icon: Brain, color: 'text-orange-600', bgColor: 'bg-orange-50', borderColor: 'border-orange-200', name: 'Claude' },
+                  perplexity: { icon: Search, color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', name: 'Perplexity' },
+                  gemini: { icon: Sparkles, color: 'text-purple-600', bgColor: 'bg-purple-50', borderColor: 'border-purple-200', name: 'Gemini' },
+                  grok: { icon: Zap, color: 'text-pink-600', bgColor: 'bg-pink-50', borderColor: 'border-pink-200', name: 'Grok' }
+                }[mention.platform.toLowerCase()] || { icon: Activity, color: 'text-gray-600', bgColor: 'bg-gray-50', borderColor: 'border-gray-200', name: mention.platform }
+
+                const PlatformIcon = platformConfig.icon
+
+                const sentimentConfig = {
+                  positive: { badge: 'default', text: 'Positive' },
+                  neutral: { badge: 'secondary', text: 'Neutral' },
+                  negative: { badge: 'destructive', text: 'Negative' }
+                }[mention.sentiment] || { badge: 'secondary', text: 'Unknown' }
+
+                return (
+                  <div key={i} className={`border rounded-lg p-4 ${platformConfig.borderColor} ${platformConfig.bgColor}`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg bg-white border ${platformConfig.borderColor}`}>
+                        <PlatformIcon className={`h-5 w-5 ${platformConfig.color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <Badge variant="outline" className="font-semibold">
+                            {platformConfig.name}
+                          </Badge>
+                          <Badge variant={sentimentConfig.badge as any}>
+                            {sentimentConfig.text}
+                          </Badge>
+                          {mention.prominence_score > 0 && (
+                            <Badge variant="outline">
+                              Prominence: {mention.prominence_score}%
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            {new Date(mention.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        </div>
+                        <div className="mb-2">
+                          <span className="text-xs text-muted-foreground uppercase tracking-wide">Query:</span>
+                          <p className="font-medium text-sm mt-0.5">{mention.query}</p>
+                        </div>
+                        {mention.context && (
+                          <div className="bg-white/60 border rounded p-3 text-sm">
+                            <span className="text-xs text-muted-foreground uppercase tracking-wide block mb-1">Response excerpt:</span>
+                            <p className="text-muted-foreground italic leading-relaxed">...{mention.context}...</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <p className="font-medium text-sm mb-1">{mention.query}</p>
-                    <p className="text-sm text-muted-foreground">...{mention.context}...</p>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>

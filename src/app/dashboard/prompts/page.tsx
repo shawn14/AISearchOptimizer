@@ -10,11 +10,9 @@ import { Search, TrendingUp, Lightbulb, Target, Zap, BookmarkPlus, Loader2 } fro
 interface TrendingPrompt {
   id: string
   prompt: string
-  volume: number
-  difficulty: string
   category: string
-  trend: string
-  competitors: number
+  intent: string
+  reasoning: string
 }
 
 interface TrendingPromptsData {
@@ -83,8 +81,10 @@ export default function PromptResearchPage() {
 
   const trendingPrompts = data.prompts
 
-  // Opportunity prompts (low competition, high volume)
-  const opportunityPrompts = trendingPrompts.filter(p => p.competitors < 10 && p.volume > 500)
+  // High-value queries (research and decision intent)
+  const highValuePrompts = trendingPrompts.filter(p =>
+    p.intent === 'decision' || p.intent === 'comparison'
+  )
 
   // Categories
   const categories = ["all", ...Array.from(new Set(trendingPrompts.map(p => p.category)))]
@@ -93,11 +93,13 @@ export default function PromptResearchPage() {
     ? trendingPrompts
     : trendingPrompts.filter(p => p.category === selectedCategory)
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch(difficulty) {
-      case "Low": return "text-green-600 bg-green-50"
-      case "Medium": return "text-yellow-600 bg-yellow-50"
-      case "High": return "text-red-600 bg-red-50"
+  const getIntentColor = (intent: string) => {
+    switch(intent) {
+      case "decision": return "text-green-600 bg-green-50"
+      case "comparison": return "text-blue-600 bg-blue-50"
+      case "research": return "text-purple-600 bg-purple-50"
+      case "learning": return "text-orange-600 bg-orange-50"
+      case "evaluation": return "text-yellow-600 bg-yellow-50"
       default: return "text-gray-600 bg-gray-50"
     }
   }
@@ -116,33 +118,18 @@ export default function PromptResearchPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-6 md:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              Trending Queries
+              <Target className="h-4 w-4 text-primary" />
+              Total Queries
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-bold">{trendingPrompts.length}</div>
-            <p className="text-xs text-green-600 mt-2">
-              +12 new this week
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Lightbulb className="h-4 w-4 text-yellow-600" />
-              Opportunities
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-bold">{opportunityPrompts.length}</div>
             <p className="text-xs text-muted-foreground mt-2">
-              Low competition, high volume
+              AI-generated for {data.brandName}
             </p>
           </CardContent>
         </Card>
@@ -150,14 +137,14 @@ export default function PromptResearchPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Target className="h-4 w-4 text-blue-600" />
-              Avg. Competition
+              <Zap className="h-4 w-4 text-green-600" />
+              High-Value Queries
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold">9.8</div>
+            <div className="text-4xl font-bold">{highValuePrompts.length}</div>
             <p className="text-xs text-muted-foreground mt-2">
-              Brands competing
+              Decision & comparison intent
             </p>
           </CardContent>
         </Card>
@@ -165,14 +152,14 @@ export default function PromptResearchPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Zap className="h-4 w-4 text-orange-600" />
-              Total Volume
+              <Lightbulb className="h-4 w-4 text-purple-600" />
+              Categories
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold">4.0K</div>
-            <p className="text-xs text-green-600 mt-2">
-              +34% vs last month
+            <div className="text-4xl font-bold">{categories.length - 1}</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Query types covered
             </p>
           </CardContent>
         </Card>
@@ -208,33 +195,31 @@ export default function PromptResearchPage() {
         </CardContent>
       </Card>
 
-      {/* Opportunity Highlights */}
-      {opportunityPrompts.length > 0 && (
-        <Card className="border-yellow-500/50 bg-yellow-50/50">
+      {/* High-Value Highlights */}
+      {highValuePrompts.length > 0 && (
+        <Card className="border-green-500/50 bg-green-50/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-yellow-600" />
-              High-Opportunity Prompts
+              <Zap className="h-5 w-5 text-green-600" />
+              High-Value Queries
             </CardTitle>
             <CardDescription>
-              These prompts have high volume but low competition - great opportunities to rank!
+              Decision and comparison intent queries - users actively choosing solutions
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {opportunityPrompts.map((prompt) => (
+              {highValuePrompts.slice(0, 5).map((prompt) => (
                 <div key={prompt.id} className="flex items-center justify-between p-3 bg-white border rounded-lg">
                   <div className="flex-1">
                     <p className="font-medium">{prompt.prompt}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{prompt.reasoning}</p>
                     <div className="flex gap-2 mt-2">
-                      <Badge variant="outline" className="text-xs">
-                        {prompt.volume} searches
+                      <Badge variant="outline" className={`text-xs ${getIntentColor(prompt.intent)}`}>
+                        {prompt.intent}
                       </Badge>
                       <Badge variant="outline" className="text-xs">
-                        {prompt.competitors} competitors
-                      </Badge>
-                      <Badge className="text-xs bg-green-100 text-green-700">
-                        {prompt.trend} trending
+                        {prompt.category}
                       </Badge>
                     </div>
                   </div>
@@ -248,11 +233,11 @@ export default function PromptResearchPage() {
         </Card>
       )}
 
-      {/* All Trending Prompts */}
+      {/* All AI-Generated Queries */}
       <Card>
         <CardHeader>
-          <CardTitle>Trending Prompts</CardTitle>
-          <CardDescription>Most searched queries in your industry</CardDescription>
+          <CardTitle>AI-Generated Monitoring Queries</CardTitle>
+          <CardDescription>Queries where {data.brandName} should be mentioned</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -261,22 +246,14 @@ export default function PromptResearchPage() {
                 <div className="flex-1">
                   <div className="flex items-start gap-3">
                     <div className="flex-1">
-                      <p className="font-medium text-base mb-2">{prompt.prompt}</p>
+                      <p className="font-medium text-base mb-1">{prompt.prompt}</p>
+                      <p className="text-sm text-muted-foreground mb-2">{prompt.reasoning}</p>
                       <div className="flex gap-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs">
-                          📊 {prompt.volume.toLocaleString()} searches/mo
-                        </Badge>
-                        <Badge variant="outline" className={`text-xs ${getDifficultyColor(prompt.difficulty)}`}>
-                          {prompt.difficulty} difficulty
+                        <Badge variant="outline" className={`text-xs ${getIntentColor(prompt.intent)}`}>
+                          {prompt.intent}
                         </Badge>
                         <Badge variant="secondary" className="text-xs">
                           {prompt.category}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          👥 {prompt.competitors} competitors
-                        </Badge>
-                        <Badge className="text-xs bg-green-100 text-green-700">
-                          📈 {prompt.trend}
                         </Badge>
                       </div>
                     </div>
@@ -287,7 +264,7 @@ export default function PromptResearchPage() {
                     <BookmarkPlus className="h-4 w-4" />
                   </Button>
                   <Button size="sm">
-                    Create Content
+                    Monitor
                   </Button>
                 </div>
               </div>
@@ -299,14 +276,14 @@ export default function PromptResearchPage() {
       {/* How it Works */}
       <Card className="bg-muted/50">
         <CardHeader>
-          <CardTitle className="text-base">🔍 How Prompt Research Works</CardTitle>
+          <CardTitle className="text-base">🤖 How AI Query Generation Works</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>• <strong>Discover queries:</strong> See what people are actually asking AI about your industry</p>
-          <p>• <strong>Analyze competition:</strong> Find out how many brands are already ranking for each query</p>
-          <p>• <strong>Identify opportunities:</strong> Spot high-volume, low-competition queries to target</p>
-          <p>• <strong>Create targeted content:</strong> Build content that answers these specific questions</p>
-          <p>• <strong>Track performance:</strong> Monitor how your content ranks for these queries over time</p>
+          <p>• <strong>AI Analysis:</strong> Claude analyzes your brand, industry, and website to understand your positioning</p>
+          <p>• <strong>Smart Generation:</strong> Generates queries across different buyer journey stages (research, comparison, decision)</p>
+          <p>• <strong>Intent Categorization:</strong> Each query is classified by user intent and category for strategic monitoring</p>
+          <p>• <strong>Reasoning Provided:</strong> Every query includes why it matters for your brand visibility</p>
+          <p>• <strong>Monitor & Track:</strong> Use these queries to track your LLM visibility across ChatGPT, Claude, Gemini, Perplexity & Grok</p>
         </CardContent>
       </Card>
     </div>
