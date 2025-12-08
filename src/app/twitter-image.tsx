@@ -21,7 +21,7 @@ export default async function Image() {
           flexDirection: 'column',
           alignItems: 'flex-start',
           justifyContent: 'center',
-          backgroundImage: 'linear-gradient(to bottom right, #ffffff, #f3f4f6)',
+          background: 'linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%)',
           padding: '80px',
         }}
       >

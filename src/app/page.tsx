@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     url: "https://www.revintel.io",
     images: [
       {
-        url: "https://www.revintel.io/og-image.svg",
+        url: "https://www.revintel.io/opengraph-image",
         width: 1200,
         height: 630,
         alt: "RevIntel - AI Search Intelligence Platform"
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "RevIntel - AI Search Intelligence Platform",
     description: "Monitor your brand's visibility across ChatGPT, Claude, Perplexity, and Gemini.",
-    images: ["https://www.revintel.io/og-image.svg"]
+    images: ["https://www.revintel.io/twitter-image"]
   }
 };
 
