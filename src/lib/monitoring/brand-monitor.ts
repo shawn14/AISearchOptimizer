@@ -35,7 +35,7 @@ export interface MonitoringResult {
 }
 
 // Platform configuration - enable/disable platforms
-const ENABLED_PLATFORMS: AIPlatform[] = ['chatgpt', 'claude', 'perplexity', 'grok']
+const ENABLED_PLATFORMS: AIPlatform[] = ['chatgpt', 'claude', 'gemini', 'perplexity', 'grok']
 
 // Generate industry-specific queries for a brand
 function generateQueriesForBrand(brandName: string, industry?: string | null): string[] {

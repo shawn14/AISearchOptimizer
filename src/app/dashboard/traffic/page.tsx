@@ -5,39 +5,138 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { Loader2, TrendingUp, Users, MousePointerClick, Globe } from "lucide-react"
+import { Loader2, TrendingUp, Users, MousePointerClick, Globe, AlertCircle } from "lucide-react"
+
+interface TrafficData {
+  trafficByPlatform: Array<{
+    platform: string
+    visits: number
+    clicks: number
+    ctr: number
+    avgTimeOnPage: number
+    bounceRate: number
+  }>
+  trafficTrend: Array<{
+    date: string
+    chatgpt: number
+    claude: number
+    gemini: number
+    perplexity: number
+    grok: number
+  }>
+  referralSources: Array<{
+    name: string
+    value: number
+    color: string
+  }>
+  totalVisits: number
+  totalClicks: number
+  avgCTR: number
+  runsAnalyzed?: number
+}
 
 export default function TrafficPage() {
-  const [loading, setLoading] = useState(false)
-  const [timeRange, setTimeRange] = useState<string>("7d")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [timeRange, setTimeRange] = useState<string>("7")
+  const [data, setData] = useState<TrafficData | null>(null)
 
-  // Mock data - in production, this would come from analytics tracking
-  const trafficByPlatform = [
-    { platform: 'ChatGPT', visits: 1240, clicks: 340, ctr: 27.4 },
-    { platform: 'Claude', visits: 980, clicks: 285, ctr: 29.1 },
-    { platform: 'Perplexity', visits: 756, clicks: 198, ctr: 26.2 },
-    { platform: 'Grok', visits: 420, clicks: 98, ctr: 23.3 },
-  ]
+  useEffect(() => {
+    fetchTrafficData()
+  }, [timeRange])
 
-  const trafficTrend = [
-    { date: 'Jan 1', chatgpt: 45, claude: 32, perplexity: 28, grok: 15 },
-    { date: 'Jan 2', chatgpt: 52, claude: 38, perplexity: 31, grok: 18 },
-    { date: 'Jan 3', chatgpt: 48, claude: 41, perplexity: 29, grok: 16 },
-    { date: 'Jan 4', chatgpt: 61, claude: 45, perplexity: 35, grok: 21 },
-    { date: 'Jan 5', chatgpt: 55, claude: 48, perplexity: 32, grok: 19 },
-    { date: 'Jan 6', chatgpt: 67, claude: 51, perplexity: 38, grok: 24 },
-    { date: 'Jan 7', chatgpt: 71, claude: 54, perplexity: 41, grok: 26 },
-  ]
+  async function fetchTrafficData() {
+    setLoading(true)
+    setError(null)
 
-  const referralSources = [
-    { name: 'Direct AI Search', value: 65, color: '#6366f1' },
-    { name: 'Follow-up Questions', value: 25, color: '#8b5cf6' },
-    { name: 'Cited Sources', value: 10, color: '#a78bfa' },
-  ]
+    try {
+      const response = await fetch(`/api/traffic?days=${timeRange}`)
+      const result = await response.json()
 
-  const totalVisits = trafficByPlatform.reduce((sum, p) => sum + p.visits, 0)
-  const totalClicks = trafficByPlatform.reduce((sum, p) => sum + p.clicks, 0)
-  const avgCTR = totalVisits > 0 ? ((totalClicks / totalVisits) * 100).toFixed(1) : '0.0'
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to fetch traffic data')
+      }
+
+      setData(result.data)
+    } catch (err) {
+      console.error('Error fetching traffic data:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load traffic data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="border-destructive">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+            Error Loading Traffic Data
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">{error}</p>
+          <button
+            onClick={fetchTrafficData}
+            className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+          >
+            Try Again
+          </button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!data || data.totalVisits === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Traffic Analytics</h1>
+            <p className="text-muted-foreground">
+              Track brand mentions from AI search platforms
+            </p>
+          </div>
+        </div>
+
+        <Card className="border-primary/50 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="text-base">📊 No Traffic Data Yet</CardTitle>
+            <CardDescription>
+              Run brand monitoring to start collecting traffic data from AI platforms.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Traffic data is generated from your monitoring runs. Each time you monitor your brand,
+              we track which AI platforms mention you and calculate visibility metrics.
+            </p>
+            <a
+              href="/dashboard"
+              className="inline-block mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+            >
+              Go to Dashboard
+            </a>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${minutes}m ${secs}s`
+  }
 
   return (
     <div className="space-y-6">
@@ -46,8 +145,13 @@ export default function TrafficPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Traffic Analytics</h1>
           <p className="text-muted-foreground">
-            Track traffic coming from AI search platforms
+            Track brand mentions from AI search platforms
           </p>
+          {data.runsAnalyzed && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Based on {data.runsAnalyzed} monitoring runs
+            </p>
+          )}
         </div>
 
         {/* Time Range Filter */}
@@ -56,9 +160,9 @@ export default function TrafficPage() {
             <SelectValue placeholder="Select range" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="7d">Last 7 days</SelectItem>
-            <SelectItem value="30d">Last 30 days</SelectItem>
-            <SelectItem value="90d">Last 90 days</SelectItem>
+            <SelectItem value="7">Last 7 days</SelectItem>
+            <SelectItem value="30">Last 30 days</SelectItem>
+            <SelectItem value="90">Last 90 days</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -69,13 +173,13 @@ export default function TrafficPage() {
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" />
-              Total Visits
+              Total Mentions
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold">{totalVisits.toLocaleString()}</div>
-            <p className="text-xs text-green-600 mt-2">
-              +12.5% from last period
+            <div className="text-4xl font-bold">{data.totalVisits.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Brand mentions across all platforms
             </p>
           </CardContent>
         </Card>
@@ -84,13 +188,13 @@ export default function TrafficPage() {
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <MousePointerClick className="h-4 w-4 text-primary" />
-              Total Clicks
+              High-Prominence
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold">{totalClicks.toLocaleString()}</div>
-            <p className="text-xs text-green-600 mt-2">
-              +8.3% from last period
+            <div className="text-4xl font-bold">{data.totalClicks.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Mentions with high visibility
             </p>
           </CardContent>
         </Card>
@@ -99,13 +203,13 @@ export default function TrafficPage() {
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              Avg Click-Through Rate
+              Prominence Rate
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold">{avgCTR}%</div>
-            <p className="text-xs text-green-600 mt-2">
-              +2.1% from last period
+            <div className="text-4xl font-bold">{data.avgCTR}%</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              High-visibility mention rate
             </p>
           </CardContent>
         </Card>
@@ -118,7 +222,7 @@ export default function TrafficPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold">{trafficByPlatform.length}</div>
+            <div className="text-4xl font-bold">{data.trafficByPlatform.length}</div>
             <p className="text-xs text-muted-foreground mt-2">
               AI search engines
             </p>
@@ -127,50 +231,53 @@ export default function TrafficPage() {
       </div>
 
       {/* Traffic Trend */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Traffic Trends</CardTitle>
-          <CardDescription>Daily visits from AI platforms</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={trafficTrend}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="chatgpt" stroke="#10b981" strokeWidth={2} name="ChatGPT" />
-              <Line type="monotone" dataKey="claude" stroke="#6366f1" strokeWidth={2} name="Claude" />
-              <Line type="monotone" dataKey="perplexity" stroke="#f59e0b" strokeWidth={2} name="Perplexity" />
-              <Line type="monotone" dataKey="grok" stroke="#8b5cf6" strokeWidth={2} name="Grok" />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {data.trafficTrend.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Mention Trends</CardTitle>
+            <CardDescription>Daily brand mentions from AI platforms</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={350}>
+              <LineChart data={data.trafficTrend}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="chatgpt" stroke="#10b981" strokeWidth={2} name="ChatGPT" />
+                <Line type="monotone" dataKey="claude" stroke="#6366f1" strokeWidth={2} name="Claude" />
+                <Line type="monotone" dataKey="gemini" stroke="#f59e0b" strokeWidth={2} name="Gemini" />
+                <Line type="monotone" dataKey="perplexity" stroke="#ec4899" strokeWidth={2} name="Perplexity" />
+                <Line type="monotone" dataKey="grok" stroke="#8b5cf6" strokeWidth={2} name="Grok" />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Platform Performance */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Traffic by Platform</CardTitle>
-            <CardDescription>Visits and clicks from each AI platform</CardDescription>
+            <CardTitle>Mentions by Platform</CardTitle>
+            <CardDescription>Brand visibility across each AI platform</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {trafficByPlatform.map((platform) => (
+              {data.trafficByPlatform.map((platform) => (
                 <div key={platform.platform} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">{platform.platform}</Badge>
-                      <span className="text-sm text-muted-foreground">CTR: {platform.ctr}%</span>
+                      <span className="text-sm text-muted-foreground">Rate: {platform.ctr}%</span>
                     </div>
-                    <span className="text-sm font-medium">{platform.visits} visits</span>
+                    <span className="text-sm font-medium">{platform.visits} mentions</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
                     <div
                       className="bg-primary h-2 rounded-full"
-                      style={{ width: `${(platform.visits / totalVisits) * 100}%` }}
+                      style={{ width: `${(platform.visits / data.totalVisits) * 100}%` }}
                     />
                   </div>
                 </div>
@@ -179,33 +286,35 @@ export default function TrafficPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Referral Sources</CardTitle>
-            <CardDescription>How users find your content through AI</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={referralSources}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={(props: any) => `${props.name}: ${((props.percent || 0) * 100).toFixed(0)}%`}
-                  outerRadius={90}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {referralSources.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        {data.referralSources.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Mention Types</CardTitle>
+              <CardDescription>How your brand appears in AI responses</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={data.referralSources}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(props: any) => `${props.name}: ${props.value}%`}
+                    outerRadius={90}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {data.referralSources.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Platform Details */}
@@ -220,15 +329,15 @@ export default function TrafficPage() {
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-4 font-medium">Platform</th>
-                  <th className="text-right py-3 px-4 font-medium">Visits</th>
-                  <th className="text-right py-3 px-4 font-medium">Clicks</th>
-                  <th className="text-right py-3 px-4 font-medium">CTR</th>
-                  <th className="text-right py-3 px-4 font-medium">Avg. Time on Page</th>
-                  <th className="text-right py-3 px-4 font-medium">Bounce Rate</th>
+                  <th className="text-right py-3 px-4 font-medium">Mentions</th>
+                  <th className="text-right py-3 px-4 font-medium">High-Prominence</th>
+                  <th className="text-right py-3 px-4 font-medium">Rate</th>
+                  <th className="text-right py-3 px-4 font-medium">Avg. Time</th>
+                  <th className="text-right py-3 px-4 font-medium">Engagement</th>
                 </tr>
               </thead>
               <tbody>
-                {trafficByPlatform.map((platform) => (
+                {data.trafficByPlatform.map((platform) => (
                   <tr key={platform.platform} className="border-b">
                     <td className="py-3 px-4">
                       <Badge variant="outline">{platform.platform}</Badge>
@@ -236,8 +345,8 @@ export default function TrafficPage() {
                     <td className="text-right py-3 px-4">{platform.visits.toLocaleString()}</td>
                     <td className="text-right py-3 px-4">{platform.clicks.toLocaleString()}</td>
                     <td className="text-right py-3 px-4">{platform.ctr}%</td>
-                    <td className="text-right py-3 px-4">2m 34s</td>
-                    <td className="text-right py-3 px-4">42.5%</td>
+                    <td className="text-right py-3 px-4">{formatTime(platform.avgTimeOnPage)}</td>
+                    <td className="text-right py-3 px-4">{(100 - platform.bounceRate).toFixed(1)}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -246,23 +355,25 @@ export default function TrafficPage() {
         </CardContent>
       </Card>
 
-      {/* Setup Notice */}
+      {/* Info Notice */}
       <Card className="border-primary/50 bg-primary/5">
         <CardHeader>
-          <CardTitle className="text-base">📊 Setup Tracking</CardTitle>
+          <CardTitle className="text-base">📊 About This Data</CardTitle>
           <CardDescription>
-            To track real traffic from AI platforms, add the tracking script to your website:
+            Understanding your AI platform traffic metrics
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="bg-muted p-4 rounded-lg font-mono text-sm overflow-x-auto">
-            <code>
-              {`<script src="https://cdn.aisearchoptimizer.com/track.js"
-        data-api-key="your-api-key"></script>`}
-            </code>
-          </div>
+          <ul className="text-sm text-muted-foreground space-y-2">
+            <li>• <strong>Mentions:</strong> How many times your brand appeared in AI responses</li>
+            <li>• <strong>High-Prominence:</strong> Mentions with visibility score above 50%</li>
+            <li>• <strong>Rate:</strong> Percentage of high-prominence mentions</li>
+            <li>• <strong>Avg. Time:</strong> Estimated engagement duration (simulated)</li>
+            <li>• <strong>Engagement:</strong> Inverse of bounce rate (simulated)</li>
+          </ul>
           <p className="text-sm text-muted-foreground mt-4">
-            This will automatically detect and track visitors coming from AI search platforms.
+            Data is collected from your brand monitoring runs across AI platforms.
+            Run more monitoring to get more comprehensive traffic insights.
           </p>
         </CardContent>
       </Card>
