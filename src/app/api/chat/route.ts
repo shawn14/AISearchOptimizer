@@ -150,8 +150,8 @@ Response style:
 async function fetchUserDataContext(pageContext: string, customDateRange?: { startDate: string, endDate: string } | null): Promise<string> {
   try {
     // Fetch monitoring data
-    const monitoringPath = path.join(process.cwd(), "data", "monitoring-runs.json")
-    let monitoringData: any = { runs: [] }
+    const monitoringPath = path.join(process.cwd(), "data", "monitoring.json")
+    let monitoringData: any = []
     if (fs.existsSync(monitoringPath)) {
       monitoringData = JSON.parse(fs.readFileSync(monitoringPath, "utf-8"))
     }
@@ -164,11 +164,11 @@ async function fetchUserDataContext(pageContext: string, customDateRange?: { sta
     }
 
     // Calculate key metrics
-    const runs = monitoringData.runs || []
+    const runs = Array.isArray(monitoringData) ? monitoringData : []
     const audits = auditsData.audits || []
 
     const latestRuns = runs
-      .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort((a: any, b: any) => new Date(b.timestamp || b.created_at || 0).getTime() - new Date(a.timestamp || a.created_at || 0).getTime())
       .slice(0, 5)
 
     const avgVisibility = latestRuns.length > 0
