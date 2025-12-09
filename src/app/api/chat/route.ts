@@ -3,9 +3,10 @@ import OpenAI from "openai"
 import fs from "fs"
 import path from "path"
 import { getSession } from "@/lib/auth/session"
-import { getGACredentials } from "@/lib/firebase/storage"
+import { getGAOAuthTokens } from "@/lib/firebase/storage"
 import { BetaAnalyticsDataClient } from '@google-analytics/data'
-import os from 'os'
+import { OAuth2Client } from 'google-auth-library'
+import { db, COLLECTIONS } from '@/lib/firebase/config'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -170,25 +171,35 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
       // Get user session to fetch their actual GA data
       const session = await getSession()
       if (session?.userId) {
-        const gaCredentials = await getGACredentials(session.userId)
+        const tokens = await getGAOAuthTokens(session.userId)
+        const userDoc = await db.collection(COLLECTIONS.USERS).doc(session.userId).get()
+        const userData = userDoc.data()
+        const propertyId = userData?.ga_property_id
 
-        if (gaCredentials) {
+        if (tokens && propertyId) {
           gaConnected = true
 
-          // Fetch real GA data for the last 30 days
-          const tempDir = os.tmpdir()
-          const tempCredentialsPath = path.join(tempDir, `ga-creds-${session.userId}-${Date.now()}.json`)
-
           try {
-            fs.writeFileSync(tempCredentialsPath, JSON.stringify(gaCredentials.credentials))
+            // Create OAuth2 client with tokens
+            const oauth2Client = new OAuth2Client(
+              process.env.GOOGLE_CLIENT_ID,
+              process.env.GOOGLE_CLIENT_SECRET
+            )
 
+            oauth2Client.setCredentials({
+              access_token: tokens.accessToken,
+              refresh_token: tokens.refreshToken || undefined,
+              expiry_date: tokens.expiryDate || undefined,
+            })
+
+            // Initialize GA Data API client with OAuth
             const analyticsDataClient = new BetaAnalyticsDataClient({
-              keyFilename: tempCredentialsPath,
+              authClient: oauth2Client,
             })
 
             // Fetch metrics for last 30 days
             const [response] = await analyticsDataClient.runReport({
-              property: `properties/${gaCredentials.propertyId}`,
+              property: `properties/${propertyId}`,
               dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
               dimensions: [{ name: 'date' }],
               metrics: [
@@ -200,7 +211,7 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
 
             // Fetch top pages
             const [pagesResponse] = await analyticsDataClient.runReport({
-              property: `properties/${gaCredentials.propertyId}`,
+              property: `properties/${propertyId}`,
               dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
               dimensions: [{ name: 'pageTitle' }, { name: 'pagePath' }],
               metrics: [
@@ -234,17 +245,8 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
               topPages,
               trafficTrend,
             }
-
-            // Clean up temp file
-            if (fs.existsSync(tempCredentialsPath)) {
-              fs.unlinkSync(tempCredentialsPath)
-            }
           } catch (gaError) {
             console.error('Error fetching real GA data for chat:', gaError)
-            // Clean up temp file on error
-            if (fs.existsSync(tempCredentialsPath)) {
-              fs.unlinkSync(tempCredentialsPath)
-            }
           }
         }
       }
