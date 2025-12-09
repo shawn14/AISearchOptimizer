@@ -23,8 +23,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Detect if user is asking for a specific date range
+    const dateRangeMatch = message.match(/last\s+(\d+)\s+(day|days|week|weeks|month|months)/i)
+    let customDateRange = null
+    if (dateRangeMatch) {
+      const amount = parseInt(dateRangeMatch[1])
+      const unit = dateRangeMatch[2].toLowerCase()
+
+      if (unit.startsWith('day')) {
+        customDateRange = { startDate: `${amount}daysAgo`, endDate: 'today' }
+      } else if (unit.startsWith('week')) {
+        customDateRange = { startDate: `${amount * 7}daysAgo`, endDate: 'today' }
+      } else if (unit.startsWith('month')) {
+        customDateRange = { startDate: `${amount * 30}daysAgo`, endDate: 'today' }
+      }
+    }
+
     // Fetch user data for context
-    const dataContext = await fetchUserDataContext(context)
+    const dataContext = await fetchUserDataContext(context, customDateRange)
 
     // Build system prompt with data context
     const isSettingsPage = context === "settings"
@@ -131,7 +147,7 @@ Response style:
   }
 }
 
-async function fetchUserDataContext(pageContext: string): Promise<string> {
+async function fetchUserDataContext(pageContext: string, customDateRange?: { startDate: string, endDate: string } | null): Promise<string> {
   try {
     // Fetch monitoring data
     const monitoringPath = path.join(process.cwd(), "data", "monitoring-runs.json")
@@ -209,10 +225,13 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
               authClient: oauth2Client,
             })
 
-            // Fetch metrics for last 30 days
+            // Use custom date range if provided, otherwise default to 30 days
+            const dateRange = customDateRange || { startDate: '30daysAgo', endDate: 'today' }
+
+            // Fetch metrics for specified date range
             const [response] = await analyticsDataClient.runReport({
               property: `properties/${propertyId}`,
-              dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+              dateRanges: [dateRange],
               dimensions: [{ name: 'date' }],
               metrics: [
                 { name: 'activeUsers' },
@@ -224,7 +243,7 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
             // Fetch top pages
             const [pagesResponse] = await analyticsDataClient.runReport({
               property: `properties/${propertyId}`,
-              dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+              dateRanges: [dateRange],
               dimensions: [{ name: 'pageTitle' }, { name: 'pagePath' }],
               metrics: [
                 { name: 'screenPageViews' },
@@ -237,7 +256,7 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
             // Fetch traffic sources
             const [sourcesResponse] = await analyticsDataClient.runReport({
               property: `properties/${propertyId}`,
-              dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+              dateRanges: [dateRange],
               dimensions: [{ name: 'sessionDefaultChannelGroup' }],
               metrics: [
                 { name: 'sessions' },
@@ -252,7 +271,7 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
             // Fetch device breakdown
             const [devicesResponse] = await analyticsDataClient.runReport({
               property: `properties/${propertyId}`,
-              dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+              dateRanges: [dateRange],
               dimensions: [{ name: 'deviceCategory' }],
               metrics: [
                 { name: 'sessions' },
@@ -265,7 +284,7 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
             // Fetch geographic data
             const [geoResponse] = await analyticsDataClient.runReport({
               property: `properties/${propertyId}`,
-              dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+              dateRanges: [dateRange],
               dimensions: [{ name: 'country' }],
               metrics: [
                 { name: 'sessions' },
@@ -278,7 +297,7 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
             // Fetch landing pages
             const [landingPagesResponse] = await analyticsDataClient.runReport({
               property: `properties/${propertyId}`,
-              dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+              dateRanges: [dateRange],
               dimensions: [{ name: 'landingPagePlusQueryString' }],
               metrics: [
                 { name: 'sessions' },
@@ -367,7 +386,11 @@ Content Optimization:
 
     // Add REAL GA data if available
     if (gaConnected && gaData && gaData.metrics) {
-      contextStr += `\n\nGoogle Analytics (Last 30 Days):
+      const dateRangeLabel = customDateRange
+        ? `(${customDateRange.startDate} to ${customDateRange.endDate})`
+        : '(Last 30 Days)'
+
+      contextStr += `\n\nGoogle Analytics ${dateRangeLabel}:
 - Total Users: ${gaData.metrics.totalUsers?.toLocaleString() || 0}
 - Total Sessions: ${gaData.metrics.totalSessions?.toLocaleString() || 0}
 - Total Page Views: ${gaData.metrics.totalPageViews?.toLocaleString() || 0}
