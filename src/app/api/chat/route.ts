@@ -55,7 +55,7 @@ Key URLs to reference:
 - Property Access: Go to Admin → Property Access Management in Google Analytics
 
 Keep responses helpful and conversational. If they're stuck, ask what step they're on.`
-      : `You are RevIntel's AI assistant, helping users understand their AI search visibility and Google Analytics data.
+      : `You are RevIntel's AI assistant, an expert analyst helping users understand their AI search visibility and Google Analytics data.
 
 Current Page Context: ${context || "dashboard"}
 
@@ -63,16 +63,28 @@ Available Data:
 ${dataContext}
 
 Your role:
-- Answer questions about the user's metrics, trends, and data
-- Provide actionable insights and recommendations
-- Explain complex concepts in simple terms
-- Be concise and helpful
+- Answer questions about the user's metrics, trends, and data with depth and insight
+- Provide actionable insights and strategic recommendations based on the actual data
+- Explain complex concepts in simple, accessible terms
 - Use specific numbers from their data when relevant
-- Suggest next steps or optimizations
-- When asked about Google Analytics metrics (visitors, page views, sessions, etc.), reference the actual GA data provided above
-- If GA data shows traffic patterns, highlight significant trends
+- Identify trends, patterns, and anomalies in the data
+- When asked about Google Analytics metrics, reference the actual GA data provided above
+- When asked to create reports, provide comprehensive analysis with:
+  * Executive summary
+  * Key metrics and trends
+  * Insights and interpretation
+  * Actionable recommendations
+- Compare data across dimensions (sources, devices, geo, etc.) to find insights
+- Highlight what's working well and what needs improvement
+- Suggest specific next steps or optimizations based on the data
 
-Keep responses brief (2-3 sentences unless more detail is needed). Always use the actual numbers from the data provided above.`
+Response style:
+- Be thorough and analytical when asked for reports or detailed analysis
+- Be concise (2-3 sentences) for quick questions
+- Always use actual numbers from the data provided above
+- Format reports with clear sections and bullet points
+- Provide context for the numbers (e.g., "X% increase compared to Y")
+- When appropriate, explain the "why" behind the numbers`
 
     // Build messages array
     const messages: any[] = [
@@ -100,7 +112,7 @@ Keep responses brief (2-3 sentences unless more detail is needed). Always use th
       model: "gpt-4o-mini", // Cheapest model: $0.150/1M input, $0.600/1M output tokens
       messages,
       temperature: 0.7,
-      max_tokens: 500, // Keep responses concise
+      max_tokens: 2000, // Allow for detailed reports and analysis
     })
 
     const response = completion.choices[0]?.message?.content || "I'm not sure how to help with that."
@@ -222,6 +234,61 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
               limit: 5,
             })
 
+            // Fetch traffic sources
+            const [sourcesResponse] = await analyticsDataClient.runReport({
+              property: `properties/${propertyId}`,
+              dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+              dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+              metrics: [
+                { name: 'sessions' },
+                { name: 'activeUsers' },
+                { name: 'engagementRate' },
+                { name: 'averageSessionDuration' },
+              ],
+              orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+              limit: 10,
+            })
+
+            // Fetch device breakdown
+            const [devicesResponse] = await analyticsDataClient.runReport({
+              property: `properties/${propertyId}`,
+              dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+              dimensions: [{ name: 'deviceCategory' }],
+              metrics: [
+                { name: 'sessions' },
+                { name: 'activeUsers' },
+                { name: 'engagementRate' },
+              ],
+              orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+            })
+
+            // Fetch geographic data
+            const [geoResponse] = await analyticsDataClient.runReport({
+              property: `properties/${propertyId}`,
+              dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+              dimensions: [{ name: 'country' }],
+              metrics: [
+                { name: 'sessions' },
+                { name: 'activeUsers' },
+              ],
+              orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+              limit: 10,
+            })
+
+            // Fetch landing pages
+            const [landingPagesResponse] = await analyticsDataClient.runReport({
+              property: `properties/${propertyId}`,
+              dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+              dimensions: [{ name: 'landingPagePlusQueryString' }],
+              metrics: [
+                { name: 'sessions' },
+                { name: 'bounceRate' },
+                { name: 'engagementRate' },
+              ],
+              orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+              limit: 10,
+            })
+
             const trafficTrend = response.rows?.map(row => ({
               date: row.dimensionValues?.[0]?.value || '',
               users: parseInt(row.metricValues?.[0]?.value || '0'),
@@ -236,6 +303,34 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
               users: parseInt(row.metricValues?.[1]?.value || '0'),
             })) || []
 
+            const trafficSources = sourcesResponse.rows?.map(row => ({
+              source: row.dimensionValues?.[0]?.value || 'Unknown',
+              sessions: parseInt(row.metricValues?.[0]?.value || '0'),
+              users: parseInt(row.metricValues?.[1]?.value || '0'),
+              engagementRate: parseFloat(row.metricValues?.[2]?.value || '0'),
+              avgSessionDuration: parseFloat(row.metricValues?.[3]?.value || '0'),
+            })) || []
+
+            const devices = devicesResponse.rows?.map(row => ({
+              device: row.dimensionValues?.[0]?.value || 'Unknown',
+              sessions: parseInt(row.metricValues?.[0]?.value || '0'),
+              users: parseInt(row.metricValues?.[1]?.value || '0'),
+              engagementRate: parseFloat(row.metricValues?.[2]?.value || '0'),
+            })) || []
+
+            const topCountries = geoResponse.rows?.map(row => ({
+              country: row.dimensionValues?.[0]?.value || 'Unknown',
+              sessions: parseInt(row.metricValues?.[0]?.value || '0'),
+              users: parseInt(row.metricValues?.[1]?.value || '0'),
+            })) || []
+
+            const landingPages = landingPagesResponse.rows?.map(row => ({
+              page: row.dimensionValues?.[0]?.value || 'Unknown',
+              sessions: parseInt(row.metricValues?.[0]?.value || '0'),
+              bounceRate: parseFloat(row.metricValues?.[1]?.value || '0'),
+              engagementRate: parseFloat(row.metricValues?.[2]?.value || '0'),
+            })) || []
+
             const totalUsers = trafficTrend.reduce((sum, day) => sum + day.users, 0)
             const totalSessions = trafficTrend.reduce((sum, day) => sum + day.sessions, 0)
             const totalPageViews = trafficTrend.reduce((sum, day) => sum + day.pageViews, 0)
@@ -243,6 +338,10 @@ async function fetchUserDataContext(pageContext: string): Promise<string> {
             gaData = {
               metrics: { totalUsers, totalSessions, totalPageViews },
               topPages,
+              trafficSources,
+              devices,
+              topCountries,
+              landingPages,
               trafficTrend,
             }
           } catch (gaError) {
@@ -279,6 +378,41 @@ Content Optimization:
         contextStr += `\n\nTop 5 Pages by Traffic:`
         gaData.topPages.slice(0, 5).forEach((page: any, idx: number) => {
           contextStr += `\n${idx + 1}. ${page.page}: ${page.pageViews?.toLocaleString() || 0} views`
+        })
+      }
+
+      // Add traffic sources
+      if (gaData.trafficSources && gaData.trafficSources.length > 0) {
+        contextStr += `\n\nTop Traffic Sources:`
+        gaData.trafficSources.forEach((source: any, idx: number) => {
+          contextStr += `\n${idx + 1}. ${source.source}: ${source.sessions?.toLocaleString() || 0} sessions (${(source.engagementRate * 100).toFixed(1)}% engagement)`
+        })
+      }
+
+      // Add device breakdown
+      if (gaData.devices && gaData.devices.length > 0) {
+        contextStr += `\n\nDevice Breakdown:`
+        gaData.devices.forEach((device: any) => {
+          const percentage = gaData.metrics.totalSessions > 0
+            ? ((device.sessions / gaData.metrics.totalSessions) * 100).toFixed(1)
+            : '0'
+          contextStr += `\n- ${device.device}: ${device.sessions?.toLocaleString() || 0} sessions (${percentage}%)`
+        })
+      }
+
+      // Add top countries
+      if (gaData.topCountries && gaData.topCountries.length > 0) {
+        contextStr += `\n\nTop Countries:`
+        gaData.topCountries.slice(0, 5).forEach((country: any, idx: number) => {
+          contextStr += `\n${idx + 1}. ${country.country}: ${country.sessions?.toLocaleString() || 0} sessions`
+        })
+      }
+
+      // Add landing pages
+      if (gaData.landingPages && gaData.landingPages.length > 0) {
+        contextStr += `\n\nTop Landing Pages:`
+        gaData.landingPages.slice(0, 5).forEach((page: any, idx: number) => {
+          contextStr += `\n${idx + 1}. ${page.page}: ${page.sessions?.toLocaleString() || 0} sessions (${(page.engagementRate * 100).toFixed(1)}% engagement)`
         })
       }
     } else {
