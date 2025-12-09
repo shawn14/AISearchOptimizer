@@ -115,8 +115,17 @@ export async function GET(request: NextRequest) {
     // Provide helpful error messages
     let errorMessage = 'Connection test failed'
     let errorDetails = error instanceof Error ? error.message : 'Unknown error'
+    let projectId: string | null = null
 
-    if (errorDetails.includes('PERMISSION_DENIED') || errorDetails.includes('403')) {
+    // Extract project ID from error message if this is an API not enabled error
+    if (errorDetails.includes('has not been used') || errorDetails.includes('is disabled')) {
+      const projectIdMatch = errorDetails.match(/project[=\s]+(\d+)/)
+      if (projectIdMatch) {
+        projectId = projectIdMatch[1]
+      }
+      // Don't modify the error details - pass through the full message
+      errorMessage = 'API not enabled'
+    } else if (errorDetails.includes('PERMISSION_DENIED') || errorDetails.includes('403')) {
       errorMessage = 'Permission denied'
       errorDetails = 'Unable to access GA property. Please reconnect your Google Analytics account.'
     } else if (errorDetails.includes('NOT_FOUND') || errorDetails.includes('404')) {
@@ -134,6 +143,7 @@ export async function GET(request: NextRequest) {
       {
         error: errorMessage,
         details: errorDetails,
+        projectId, // Include project ID if we extracted it
       },
       { status: 500 }
     )

@@ -129,7 +129,24 @@ export default function SettingsPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.details || data.error || 'Connection test failed')
+        const errorMessage = data.details || data.error || 'Connection test failed'
+
+        // Check if this is the "API not enabled" error
+        if (errorMessage.includes('has not been used') || errorMessage.includes('is disabled') || errorMessage.includes('Enable it by visiting')) {
+          // Extract project ID from error message or use the one from response
+          const projectIdMatch = errorMessage.match(/project=(\d+)/) || errorMessage.match(/project (\d+)/)
+          const projectId = projectIdMatch ? projectIdMatch[1] : data.projectId
+
+          setError(JSON.stringify({
+            type: 'API_NOT_ENABLED',
+            projectId,
+            message: errorMessage
+          }))
+          setTesting(false)
+          return
+        }
+
+        throw new Error(errorMessage)
       }
 
       setSuccess(`Connection successful! Found ${data.metrics.totalUsers} users and ${data.metrics.totalSessions} sessions in the last 7 days.`)
@@ -201,12 +218,80 @@ export default function SettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-red-800">{error}</div>
-            </div>
-          )}
+          {error && (() => {
+            // Check if this is the special API_NOT_ENABLED error
+            let parsedError = null
+            try {
+              parsedError = JSON.parse(error)
+            } catch (e) {
+              // Not a JSON error, treat as regular error
+            }
+
+            if (parsedError && parsedError.type === 'API_NOT_ENABLED') {
+              const enableUrl = `https://console.developers.google.com/apis/api/analyticsdata.googleapis.com/overview?project=${parsedError.projectId}`
+
+              return (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <AlertCircle className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold text-amber-900 mb-2">One More Step Required</h3>
+                      <p className="text-sm text-amber-800 mb-3">
+                        The Google Analytics Data API needs to be enabled for your project. Don't worry, this is a one-time setup that takes just a minute!
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white border border-amber-200 rounded-lg p-4 mb-4">
+                    <h4 className="font-semibold text-sm text-amber-900 mb-3">Here's what to do:</h4>
+                    <ol className="space-y-3 text-sm text-amber-800">
+                      <li className="flex gap-3">
+                        <span className="font-bold flex-shrink-0">1.</span>
+                        <div>
+                          <a
+                            href={enableUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-700 underline font-medium inline-flex items-center gap-1"
+                          >
+                            Click here to enable the API
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                          <p className="text-xs text-amber-700 mt-1">(Opens in Google Cloud Console)</p>
+                        </div>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold flex-shrink-0">2.</span>
+                        <span>Click the blue <strong>"Enable"</strong> button on the page</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold flex-shrink-0">3.</span>
+                        <span>Wait 2-3 minutes for the changes to take effect</span>
+                      </li>
+                      <li className="flex gap-3">
+                        <span className="font-bold flex-shrink-0">4.</span>
+                        <span>Come back here and click <strong>"Test Connection"</strong> again</span>
+                      </li>
+                    </ol>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                    <p className="text-xs text-blue-800">
+                      <strong>Why is this needed?</strong> This API allows our app to securely read your Google Analytics data. It's a standard Google security requirement.
+                    </p>
+                  </div>
+                </div>
+              )
+            }
+
+            // Regular error message
+            return (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-red-800">{error}</div>
+              </div>
+            )
+          })()}
 
           {success && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
