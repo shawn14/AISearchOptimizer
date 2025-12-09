@@ -419,7 +419,7 @@ Content Optimization:
       contextStr += `\n\nGoogle Analytics: Not connected. User needs to connect GA in Settings to see traffic data.`
     }
 
-    // Add recent monitoring results
+    // Add recent monitoring results with AI platform responses
     if (latestRuns.length > 0) {
       const latest = latestRuns[0]
       contextStr += `\n\nMost Recent Monitoring Run:
@@ -427,6 +427,30 @@ Content Optimization:
 - Visibility: ${latest.visibility_score}/100
 - Mentions: ${latest.total_mentions}/${latest.queries_tested}
 - Date: ${new Date(latest.timestamp).toLocaleDateString()}`
+
+      // Add detailed platform responses if available
+      if (latest.platform_results && Array.isArray(latest.platform_results)) {
+        contextStr += `\n\nAI Platform Responses:`
+        latest.platform_results.forEach((result: any) => {
+          contextStr += `\n\n${result.platform.toUpperCase()}:`
+          contextStr += `\n- Query: "${result.query}"`
+          contextStr += `\n- Mentioned: ${result.yourBrand?.mentioned ? 'Yes' : 'No'}`
+          if (result.yourBrand?.mentioned) {
+            contextStr += `\n- Position: ${result.yourBrand.position || 'Not ranked'}`
+            contextStr += `\n- Prominence: ${result.yourBrand.prominence || 0}%`
+            if (result.yourBrand.context) {
+              contextStr += `\n- Context: "${result.yourBrand.context.substring(0, 200)}..."`
+            }
+          }
+          if (result.competitor?.mentioned) {
+            contextStr += `\n- Competitor also mentioned: Yes (position ${result.competitor.position || 'unknown'})`
+          }
+          // Include a snippet of the actual response
+          if (result.response) {
+            contextStr += `\n- Full Response: "${result.response.substring(0, 500)}..."`
+          }
+        })
+      }
     }
 
     // Add top/bottom pages by AEO if available
