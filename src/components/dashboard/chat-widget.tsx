@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { usePathname } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -18,6 +19,7 @@ interface ChatWidgetProps {
 }
 
 export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
+  const pathname = usePathname()
   const [isExpanded, setIsExpanded] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
@@ -25,6 +27,11 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Close chat when route changes
+  useEffect(() => {
+    setIsExpanded(false)
+  }, [pathname])
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
