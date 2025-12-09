@@ -33,6 +33,21 @@ export function ChatWidget({ pageContext = "dashboard" }: ChatWidgetProps) {
     setIsExpanded(false)
   }, [pathname])
 
+  // Close chat when any navigation link is clicked
+  useEffect(() => {
+    const handleLinkClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      // Check if clicked element or its parent is a navigation link
+      const link = target.closest('a[href^="/dashboard"]')
+      if (link && isExpanded) {
+        setIsExpanded(false)
+      }
+    }
+
+    document.addEventListener('click', handleLinkClick)
+    return () => document.removeEventListener('click', handleLinkClick)
+  }, [isExpanded])
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (messagesEndRef.current) {
