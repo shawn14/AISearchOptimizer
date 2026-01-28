@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { SiteHeader } from "@/components/site-header"
 
@@ -21,7 +21,7 @@ function GoogleIcon({ className }: { className?: string }) {
   )
 }
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
@@ -83,115 +83,130 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
-      <SiteHeader />
+    <div className="w-full max-w-md">
+      <div className="text-center mb-8">
+        <div className="flex justify-center mb-6">
+          <div className="h-14 w-14 bg-gray-900 rounded-md flex items-center justify-center">
+            <span className="text-white font-bold text-2xl">R</span>
+          </div>
+        </div>
+        <h1 className="text-4xl font-bold mb-2 text-gray-900">Welcome back</h1>
+        <p className="text-gray-600">
+          Sign in to your RevIntel account
+        </p>
+      </div>
 
-      <div className="flex items-center justify-center p-4 pt-20">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="flex justify-center mb-6">
-              <div className="h-14 w-14 bg-gray-900 rounded-md flex items-center justify-center">
-                <span className="text-white font-bold text-2xl">R</span>
+      <Card className="border-0 shadow-lg">
+        <CardContent className="pt-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Input
+                type="email"
+                placeholder="Email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                required
+                className="h-12 text-base"
+              />
+            </div>
+
+            <div className="relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
+                className="h-12 text-base pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+
+            {error && (
+              <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              className="w-full h-12 text-base bg-gray-900 hover:bg-gray-800 text-white"
+              disabled={loading || googleLoading}
+            >
+              {loading ? "Signing In..." : "Sign In"}
+            </Button>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
-            <h1 className="text-4xl font-bold mb-2 text-gray-900">Welcome back</h1>
-            <p className="text-gray-600">
-              Sign in to your RevIntel account
-            </p>
-          </div>
 
-        <Card className="border-0 shadow-lg">
-          <CardContent className="pt-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                  className="h-12 text-base"
-                />
-              </div>
-
-              <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                  className="h-12 text-base pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-
-              {error && (
-                <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-md text-sm">
-                  {error}
-                </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-12 text-base"
+              onClick={handleGoogleSignIn}
+              disabled={loading || googleLoading}
+            >
+              {googleLoading ? (
+                "Redirecting..."
+              ) : (
+                <>
+                  <GoogleIcon className="h-5 w-5 mr-2" />
+                  Sign in with Google
+                </>
               )}
+            </Button>
 
-              <Button
-                type="submit"
-                className="w-full h-12 text-base bg-gray-900 hover:bg-gray-800 text-white"
-                disabled={loading || googleLoading}
-              >
-                {loading ? "Signing In..." : "Sign In"}
-              </Button>
+            <div className="text-center mt-4">
+              <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                Forgot password?
+              </Link>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
-              <div className="relative my-4">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-gray-200" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-muted-foreground">Or continue with</span>
-                </div>
-              </div>
+      <p className="text-center mt-6 text-gray-600">
+        Don't have an account?{" "}
+        <Link href="/signup" className="text-gray-900 hover:underline font-medium">
+          Create account
+        </Link>
+      </p>
+    </div>
+  )
+}
 
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full h-12 text-base"
-                onClick={handleGoogleSignIn}
-                disabled={loading || googleLoading}
-              >
-                {googleLoading ? (
-                  "Redirecting..."
-                ) : (
-                  <>
-                    <GoogleIcon className="h-5 w-5 mr-2" />
-                    Sign in with Google
-                  </>
-                )}
-              </Button>
+function LoadingFallback() {
+  return (
+    <div className="w-full max-w-md flex items-center justify-center py-20">
+      <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+    </div>
+  )
+}
 
-              <div className="text-center mt-4">
-                <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
-                  Forgot password?
-                </Link>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-
-          <p className="text-center mt-6 text-gray-600">
-            Don't have an account?{" "}
-            <Link href="/signup" className="text-gray-900 hover:underline font-medium">
-              Create account
-            </Link>
-          </p>
-        </div>
+export default function SignInPage() {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+      <SiteHeader />
+      <div className="flex items-center justify-center p-4 pt-20">
+        <Suspense fallback={<LoadingFallback />}>
+          <SignInForm />
+        </Suspense>
       </div>
     </div>
   )
