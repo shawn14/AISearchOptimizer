@@ -32,6 +32,11 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
+    name: "Intelligence",
+    href: "/dashboard/intelligence",
+    icon: Sparkles,
+  },
+  {
     name: "Agent",
     href: "/dashboard/agent",
     icon: Bot,

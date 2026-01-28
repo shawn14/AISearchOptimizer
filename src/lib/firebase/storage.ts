@@ -89,6 +89,61 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 /**
+ * Create or get a user who signs in via Google OAuth
+ * If user exists with this email, link Google account
+ * If new user, create with Google credentials (no password)
+ */
+export async function createOrGetGoogleUser(googleData: {
+  email: string
+  firstName: string
+  lastName: string
+  googleId: string
+  avatarUrl?: string
+}): Promise<User> {
+  // Check if user already exists by email
+  const existingUser = await getUserByEmail(googleData.email)
+
+  if (existingUser) {
+    // Link Google account if not already linked
+    const userRef = db.collection(COLLECTIONS.USERS).doc(existingUser.id)
+    await userRef.update({
+      google_id: googleData.googleId,
+      avatar_url: googleData.avatarUrl || null,
+      updated_at: Timestamp.now(),
+    })
+
+    return existingUser
+  }
+
+  // Create new user with Google credentials (no password)
+  const ref = db.collection(COLLECTIONS.USERS).doc()
+  const now = Timestamp.now()
+
+  const newUser = {
+    email: googleData.email.toLowerCase(),
+    first_name: googleData.firstName,
+    last_name: googleData.lastName,
+    password_hash: '', // No password for Google-only users
+    google_id: googleData.googleId,
+    avatar_url: googleData.avatarUrl || null,
+    created_at: now,
+    updated_at: now,
+  }
+
+  await ref.set(newUser)
+
+  return {
+    id: ref.id,
+    email: newUser.email,
+    first_name: newUser.first_name,
+    last_name: newUser.last_name,
+    password_hash: newUser.password_hash,
+    created_at: now.toDate(),
+    updated_at: now.toDate(),
+  }
+}
+
+/**
  * Brand Management
  */
 
