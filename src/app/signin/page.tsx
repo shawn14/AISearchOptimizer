@@ -2,6 +2,8 @@
 
 import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { signInWithPopup } from "firebase/auth"
+import { auth, googleProvider } from "@/lib/firebase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -34,25 +36,49 @@ function SignInForm() {
     password: "",
   })
 
-  // Check for OAuth error in URL params
+  // Check for error in URL params
   useEffect(() => {
     const errorParam = searchParams.get('error')
     if (errorParam) {
-      const errorMessages: Record<string, string> = {
-        'google_signin_failed': 'Google sign-in failed. Please try again.',
-        'google_oauth_denied': 'Google sign-in was cancelled.',
-        'google_userinfo_failed': 'Could not retrieve your Google account info.',
-        'missing_code': 'Authentication failed. Please try again.',
-      }
-      setError(errorMessages[errorParam] || 'Sign in failed. Please try again.')
+      setError('Sign in failed. Please try again.')
     }
   }, [searchParams])
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setGoogleLoading(true)
     setError("")
-    // Redirect to Google OAuth initiation endpoint
-    window.location.href = '/api/auth/google/signin'
+    
+    try {
+      const result = await signInWithPopup(auth, googleProvider)
+      const user = result.user
+      
+      // Get the ID token to send to backend for session creation
+      const idToken = await user.getIdToken()
+      
+      // Create session on backend
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to create session')
+      }
+      
+      router.push('/dashboard')
+    } catch (err: any) {
+      console.error('Google sign-in error:', err)
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in cancelled')
+      } else if (err.code === 'auth/popup-blocked') {
+        setError('Pop-up blocked. Please allow pop-ups for this site.')
+      } else {
+        setError('Google sign-in failed. Please try again.')
+      }
+    } finally {
+      setGoogleLoading(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,7 +99,6 @@ function SignInForm() {
         throw new Error(data.error || "Sign in failed")
       }
 
-      // Redirect to dashboard on success
       router.push("/dashboard")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed")
@@ -163,7 +188,10 @@ function SignInForm() {
               disabled={loading || googleLoading}
             >
               {googleLoading ? (
-                "Redirecting..."
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  Signing in...
+                </>
               ) : (
                 <>
                   <GoogleIcon className="h-5 w-5 mr-2" />
