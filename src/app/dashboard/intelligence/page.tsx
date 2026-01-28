@@ -759,9 +759,9 @@ function calculateCompetitorStats(runs: MonitoringRun[], brandName: string): Com
         return cleaned.length > 3 && /^[A-Z]/.test(cleaned) && cleaned.toLowerCase() !== brandName.toLowerCase()
       })
 
-      const uniqueBrands = [...new Set(brandMatches.map((w: string) => w.replace(/[^a-zA-Z]/g, '')))]
+      const uniqueBrands: string[] = [...new Set(brandMatches.map((w: string) => w.replace(/[^a-zA-Z]/g, '')))]
 
-      uniqueBrands.forEach(brand => {
+      uniqueBrands.forEach((brand: string) => {
         if (!competitorMap.has(brand)) {
           competitorMap.set(brand, { mentions: 0, wins: 0, losses: 0, ties: 0 })
         }
